@@ -27,6 +27,7 @@
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{multirow}
 \usepackage{todonotes}
 \usepackage{url}
 \usepackage{soul}
@@ -34,9 +35,23 @@
 \usepackage{xr}
 \usepackage{float}
 \usepackage{cite}
+\usepackage{booktabs}
 \usepackage[singlelinecheck=false,labelfont=bf]{caption}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.25}
+
+\usepackage{array}
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+\renewcommand{\figurename}{Supplementary Figure}
+\renewcommand{\tablename}{Supplementary Table}
 
 \newcommand{\tool}[1]{\emph{\textsc{#1}}}
+\newcommand{\figref}[1]{Fig. \ref{fig:#1}}
 
 \begin{document}
 
@@ -118,9 +133,7 @@ my moral North Star
 %- biclique work
 %- mpmap
 
-\part{First Part}
-
-\chapter{Introduction and background}
+\part{Introduction and background}
 
 %In modern genomics, sequence analysis is arguably the most fundamental experimental assay. This is in no small part due to its adaptability 
 
@@ -171,11 +184,15 @@ Computational methods are essential to translate sequencing data into biological
 %vg mapping
 %variant calling
 
-\chapter{A pantranscriptome analysis pipeline}
+
+\part{Pangenomic analysis of the transcriptome}
+
+\chapter{A pipeline for pantranscriptome analysis}
+\label{chapter:mpmap}
 
 \section{Preamble}
 
-What follows is the majority of the text of my preprint, "Haplotype-aware pantranscriptome analyses using spliced pangenome graphs", for which I share first-authorship with Jonas Sibbesen. The paper details three components of a pantranscriptomic pipeline. The first component builds spliced pangenome graphs, the second component aligns RNA-seq data to these graphs, and the final component infer haplotype-specific isoform analysis from the mapping results. My contributions lie primarily in the mapping algorithm and the experimental demonstrations.
+What follows is the majority of the text of my preprint, "Haplotype-aware pantranscriptome analyses using spliced pangenome graphs", for which I share first-authorship with Jonas Sibbesen. The paper details three components of a pantranscriptomic pipeline. The first component builds spliced pangenome graphs, the second component aligns RNA-seq data to these graphs, and the final component infer haplotype-specific isoform analysis from the mapping results. My primary contributions were to design and implement the mapping algorithm. In addition, I implemented the read simulation model and contributed extensively to the writing and editing of the paper along with Jonas Sibbesen. The software development featured minor contributions from our co-authors Adam M. Novak, Jouni Sir\'{e}n, and Erik Garrison.
 
 \section{Introduction}
 
@@ -553,137 +570,949 @@ Now, let $A$ be the set of alignment paths (i.e. alignments) for this fragment. 
     L(a)= \phi\left(\frac{\ell_a - \mu}{\sigma}\right)\exp\left(\lambda s_a\right),
 \end{align}
  
-%\noindent where $\phi$ is the standard normal density function, $\lambda$ is a scaling factor that converts the alignment score into the log-likelihood of a pair-HMM \cite{karlin1990methods}, and $\mu$ and $\sigma$ are the mean and standard deviation of the fragment length distribution modeled using a normal distribution. For paired reads, these parameters are estimated from the alignment path lengths across all fragments that have 1) a mapping quality of at least 30, and 2) the same length for all alignment paths. The fragment length distribution is omitted from the equation when the fragments are single-end reads. With this likelihood, we can compute the posterior probability that the fragment originated from a given HST. Let the set of all HST paths in the cluster be denoted by $T$, and let the set of HST paths an alignment path $a$ is consistent with be denoted by $T_a$. The probability that the fragment (or alignment $A$) originated from an HST is calculated as:
-%%\todo{Jonas: Removed enumerate.}
-%
-%%\todo{Does this mean $\mu=0$ and $\sigma=1$? - Adam. Jonas: We actually remove the normal distribution from the equation.}
-%
-%\begin{align}
-%    p_t=(1-\epsilon)\cdot P(t|A)=(1-\epsilon)\cdot\frac{P(A|t)P(t)}{\sum_{t\in T}P(A|t)P(t)}
-%\end{align}
-%
-%\noindent with
-%
-%\begin{align}
-%    P(A|t)\propto\max_{a\in A}\begin{cases}\frac{L(a)}{\widetilde{\ell}_t} & \mbox{if }t\in T_a\\0 & \mbox{otherwise}\end{cases}
-%\end{align}
-%
-%
-%\noindent Here, $\widetilde{\ell}_t$ is the effective transcript length for $t$ calculated as ${\widetilde{\ell}_t=\ell_t-\mu_{\ell_t}}$. In turn, $\mu_{\ell_t}$ is the mean of the fragment length distribution truncated to ${[1,\ell_t]}$. A similar approach is used in \tool{Salmon} \cite{patro2017salmon}. The effective transcript length accounts for the fact that fragments cannot be sequenced from all positions due to the size of the fragment. If the fragments are single-end reads, the fragment length distribution parameters used to calculate the effective length must be supplied by the user. The prior over HSTs $P(t)$ is taken to be uniform. If the HST probability $p_t$ is below $10^{-8}$, it is truncated to 0 to reduce storage. 
-%
-%%\todo{Glenn: I find this part confusing.  Perhaps it can be better explained as part of L(a) above? Jonas: I completely agree that this part can be a bit confusing. L(a) is the likelihood of the alignment path which does not dependent on the effective length. That is why it is not part of L(a). Not sure how to explain it better, but I will try to think about it for the journal submission.} 
-%	
-%We denote the set of all fragment probabilities in a cluster as $F$ and the probabilities for a fragment $i$ as ${F_i=\left(\epsilon,\textbf{p}\right)}$, where $\textbf{p}$ is the vector of probabilities over all $T$ HSTs in the cluster. Many fragments will have very similar probabilities and can thus be collapsed to save computation resources and memory \cite{nicolae2011estimation,patro2017salmon}. To do this we collapse two fragment probabilities $F_i$ and $F_j$ if they satisfy both of:
-%
-%%\todo{This is a set of a probability number $\epsilon$, and also a vector $\textbf{p}$. This set has two elements. Are we supposed to be taking the set of $\epsilon$ and also all the items in $\textbf{p}$, removing duplicates (because it's a set)? - Adam. Jonas: Yes, this is not a great notation. I have changed it to normal brackets.}
-%% \todo{I have changed it from \{\} to (). Jordan can you confirm that this notation is correct/better?}
-%% Jordan: yes, that's better
-%
-%\begin{align}
-%    \left|\epsilon^{i}-\epsilon^{j}\right| &< 10^{-8} \\	\left|p_t^{i}-p_t^{j}\right| &< 10^{-8},\quad\forall t\in T
-%\end{align}
-%
-%We also associate each set of collapsed fragments with $c$, the number of collapsed fragments in the set. The resulting set $E$ of tuples ${\left(\epsilon, \textbf{p}, c\right)}$ is subsequently used to infer the expression of the HSTs in the pantranscriptome.
-%%For each set of collapsed probabilities, we keep the number of fragments $c$ in the set: $\textcolor{red}{e=\left(\epsilon,\textbf{p},c\right)}$. The set of collapsed fragment probabilities $E$\textcolor{red}{, with $e\in E$}, are subsequently used to infer the expression of the HSTs in the pantranscriptome. 
-%
-%%\todo{Sets aren't supposed to do this; is this a tuple instead? - Adam. Jonas: Yes it should have been a tuple.}
-%%\todo{Isn't this $e$ here and later? Or should it be $E$ above? - Adam. Jonas: E is the set of e's. That could definitely be more clear. I have updated the text.}
-%
-%\subsubsection{Inferring haplotype-specific transcript expression}
-%
-%\tool{rpvg} quantifies the expression of the HSTs in the pantranscriptome using a nested inference scheme (Supplementary Figure~\ref{fig:hst-quantification}c). This is done independently for each cluster. First, the distribution over diplotypes (i.e. pairs of haplotypes) is inferred. A haplotype combination is then sampled from this distribution and expression is inferred conditioned on the sampled haplotypes. This procedure is repeated multiple times to account for the uncertainty in the haplotype estimates. In the following, we will assume the sample is diploid, but the equations and algorithms generalize to any ploidy.
-%\newline 
-%\newline
-%The marginal distribution over diplotypes is approximated by assuming the haplotypes are identical for all transcripts in a cluster. The motivation behind this approximation is that most clusters cover only a small region (e.g. gene) of the genome. However, this approximation can break down when there are partial haplotypes or recombination events in the cluster. Using the transcript and haplotype origin table provided by \tool{vg rna}, the HSTs in the cluster are first grouped by their haplotype origin. Note that since an HST can be consistent with more than one haplotype it can also belong to multiple groups. Next, groups with the same set of HSTs are collapsed resulting in a set of unique haplotype groups. 
-%
-%Now let us denote the set of haplotype groups as $H$, with each group ${h \in H}$ consisting of a set of HSTs. The objective is to infer the distribution over diplotypes ${d=\left\{h_1,h_2\right\}}$ conditioned on the set of collapsed fragment probabilities $E$. The probability of a diplotype is defined as:
-%
-%\begin{align}
-%    %P(d|E)=P(\{h_1,h_2\}|E)\propto P(h_1)P(h_2)\prod_{e\in E}\left(\epsilon+\frac{1-\epsilon}{2}\left(P(\textbf{p}|h_1)+P(\textbf{p}|h_2)\right)\right)^c
-%    P(d|E)=P(\{h_1,h_2\}|E)\propto P(h_1)P(h_2)\prod_{\left(\epsilon, \textbf{p}, c\right) \in E}\left(\epsilon+\frac{1-\epsilon}{2}\left(P(\textbf{p}|h_1)+P(\textbf{p}|h_2)\right)\right)^c
-%\end{align}
-%%\todo{There's no $e$ inside the product expression - Adam. Jonas: Good point. I have added a clarification in the text below.}
-%%\noindent with $\textcolor{red}{e=\left(\epsilon,\textbf{p},c\right)}$ and
-%\noindent and
-%
-%\begin{align}
-%    P(\textbf{p}|h)=\frac{\frac{1}{n}\sum_{t\in h}p_t}{\sum_{k\in H}\frac{1}{n}\sum_{t\in k}p_t}\propto\sum_{t\in h}p_t
-%\end{align}
-%
-%\noindent where the prior probability of each haplotype group $P(h)$ is proportional to the number of haplotypes in the group, and $n$ is the number of transcripts in the cluster ($\tfrac{1}{n}$ and $\tfrac{1}{2}$ amount to an approximation that expression is uniform across all transcripts and the two haplotypes, respectively). This model is inspired by similar haplotyping models used in Platypus and other genotypers \cite{rimmer2014integrating,albers2011dindel,poplin2017scaling}. 
-%
-%% \todo{Is ``over'' the right word here? The domain of the distribution here seems to be all haplotype groups, not a single one, but I don't quite get what the prior of a haplotype group would mean. - Adam. Jonas: Good point. I have changed it to "of each"} 
-%% \todo{Is ``this'' $n$? - Adam. Jonas: I have updated the text.}
-%
-%The distribution over diplotypes is inferred by calculculating ${P(d|E)}$ for all pairs of haplotype groups ${h\in H}$. To reduce the space of haplotype combinations that need to be evaluated, \tool{rpvg} uses a branch-and-bound-like algorithm, where diplotypes containing an improbable haplotype group are not evaluated. Instead, the probability of all diplotypes containing an improbable haplotype group is set to 0. A haplotype group $h$ is labeled to be improbable if its optimal diplotype probability ${P(\{h,h_o\}|E)}$ is ${s\cdot 10^4}$ times lower than the current highest evaluated probability, where $s$ is the number of diplotypes sampled in the next step in the inference. The optimal diplotype probability is defined as
-%
-%\begin{align}
-%    P(\{h,h_o\}|E)\propto P(h)\prod_{\left(\epsilon, \textbf{p}, c\right) \in E}\left(\epsilon+\frac{1-\epsilon}{2}\left(P(\textbf{p}|h)+\max_{h_o \in H}\left(P(\textbf{p}|h_o)\right)\right)\right)^c
-%\end{align}
-%
-%\noindent This value serves as an upper bound on the probability of any diplotype containing $h$. 
-%\newline 
-%\newline
-%Using the inferred distribution over diplotypes the expression of the HSTs in the cluster is inferred. First a diplotype is sampled from the distribution $P(d|E)$ and all HSTs that are consistent with at least one of the haplotypes in the diplotype are collected. We denote this HST subset ${T_s\subseteq T}$ and define the likelihood over the expression values $\boldsymbol{\alpha}$ as 
-%
-%\begin{align}
-%    L(\boldsymbol{\alpha})=\prod_{\left(\epsilon, \textbf{p}, c\right) \in E}\left(\sum_{t\in T_s}\alpha_t p_t\right)^{c_{{\text -}\epsilon}},
-%\end{align}
-%
-%\noindent where $c_{{\text -}\epsilon}$ is the noise-adjusted fragment count: ${c_{{\text -}\epsilon}=c(1-\epsilon)}$. To find the (local) maximum likelihood estimate of the expression values a expectation maximization (EM) algorithm is used. The algorithm iterates between assigning fractional fragment counts to the HSTs and updating the expression values. This is a well known algorithm that is used by many other transcript quantification tools \cite{li2011rsem,nicolae2011estimation,patro2017salmon,bray2016near}. The expression values are initialized uniformly and the EM algorithm is run until convergence or for a maximum of 10,000~iterations. The algorithm is considered converged if 
-%
-%\begin{align}
-%    \frac{\left|\alpha_t^{i}-\alpha_t^{i-1}\right|}{\alpha_t^{i}}\leq0.001,\quad\forall t\in T_s:\alpha_t\geq10^{-8}
-%\end{align}
-%
-%\noindent for 10~consecutive iterations, where $i$ is the index of the current iteration. This criteria is inspired by the one used by \tool{Kallisto} \cite{bray2016near} and \tool{Salmon} \cite{patro2017salmon}. All expression values below $10^{-8}$ of the maximum likelihood estimate are truncated to 0. 
-%The diplotype sampling and EM steps are repeated 1,000~times to propagate the uncertainty over diplotypes into the HST expression estimates. Since the EM algorithm is deterministic, the same expression values are inferred for the same diplotype. We therefore only need to run the EM step once for each uniquely sampled diplotype, which can considerably reduce computation time. 
-%\newline 
-%\newline
-%The final output of \tool{rpvg} is the haplotype probability and estimated expression value for each HST in the pantrancriptome. The probability is calculated as the fraction of diplotype samples which included the HST. The expression reported is the average across all diplotype samples (including samples where the HST's expression is zero due to its haplotype being absent from the diplotype). 
-%
-%\subsection{Transcript quantification evaluation}
-%
-%We compared \tool{rpvg}'s quantification accuracy against three other transcript quantification tools: \tool{Kallisto}, \tool{Salmon} and \tool{RSEM}. Haplotype-specific transcript indexes for \tool{Kallisto}, \tool{Salmon} and \tool{RSEM} were built from the HST sequence FASTA files generated by \tool{vg rna}. \tool{Salmon} indexing was run with duplicates kept and, on the real data, the reference genome was given as a decoy. The Bowtie2 mapper was used in \tool{RSEM} with the maximum number of alignments per read increased to 1,000. The transcript expression was estimated using default parameters for all methods, except for the real data where strand-specific inference was enabled. \tool{Kallisto} and \tool{Salmon} were run without bias correction as it did not provide a clear advantage on the ``Europe (excl. CEU)'' pantranscriptome using the SRR1153470 reads (data not shown). \tool{RSEM} was only run on the NA12878 sample-specific transcriptome and the ``Europe (excl. CEU)'' pantranscriptome, as it did not scale to the two largest pantranscriptomes. 
-%
-%\tool{rpvg} was run using default parameters and with two different types of alignments inputs: the standard multipath alignments from \tool{vg mpmap} and single-path alignments generated by finding the best scoring path in the multipath alignments using \tool{vg view}. The fragment length distribution parameters estimated by \tool{vg mpmap} were given as input to \tool{rpvg} when using the single-path alignments as they are lost from the alignment file during the conversion. \tool{rpvg} was run with a ploidy of 2 for all read sets, including CHM13. For the simulated data, the exon-only splicing graphs were used when mapping the reads using \tool{vg mpmap}. These graphs are more comparable to the transcriptomes that the other methods use for (pseudo)-alignment. For the real data, we used the whole spliced pangenome graphs. All HSTs with a haplotype probability below 0.8 were filtered from the \tool{rpvg} output. The SRR1153470 and CHM13 read data was used to optimize the parameters of \tool{rpvg}.  
-%\newline 
-%\newline
-%For the SRR1153470 and ENCSR000AED data, which are both NA12878 cell lines, we compared the quantified HSTs to the NA12878's haplotypes from the 1000 Genomes Project data. We considered an HST consistent with these haplotypes if it matched the sequence of one of the two possible NA12878 haplotype versions of the transcript. The haplotyping performance of each method was then estimated by comparing the number and fraction of quantified HSTs with positive expression that were consistent. 
-%
-%We used transcripts per million (TPM) to measure expression. For the simulated data we re-calculated the TPM value for all methods. The reason was that we wanted to ensure that there was no bias towards \tool{RSEM}, which was used to estimate the expression profile employed by \tool{vg sim} to parameterize the HST expression values. The TPM value depends on the effective transcript length, which is not calculated in the same manner for each method. Therefore, if this is not corrected, methods that estimate the effective transcript length more similarly to \tool{RSEM} will have an advantage that does not depend on their ability to predict correct expression values. The true fragment length distribution parameters and the effective transcript length approach employed by \tool{rpvg} (similar to \tool{Salmon}) was used when re-calculating the TPM values.
-%
-%The method's ability to predict the correct expression value was evaluated using the simulated data for which the true expression is known. The true expression values were calculated from a table provided by \tool{vg sim}, which indicates the transcript of origin for each read. The simulated TPM values were calculated in the same manner as described above. We used both Spearman correlation and mean absolute relative difference (MARD) to quantify concordance between estimated and true expression. 
-%\newline 
-%\newline
-%The CHM13 cell line is effectively haploid, so only a single HST is expected to exist for each transcript. We used this feature of the data to measure the haplotype inference performance of each method on the T2T CHM13 data. We defined each HST as either major or minor. Major HSTs were defined as the highest expressed haplotype for each transcript; the rest were defined as minor. The fraction of expression from minor HSTs is a lower bound on the fraction of incorrectly inferred transcript expression. Accordingly, we used the number of major and minor transcripts that each method predicted to be expressed to compare their haplotype inference performance.
-%
-%\subsection{Code and data availability}
-%
-%A list of the versions used of each method is available as Supplementary Table~\ref{tab:versions}. All bash scripts with exact command-lines used to generate the results are available at the following GitHub repository: \url{https://github.com/jonassibbesen/vgrna-project-paper}. This includes log files, references to the Docker containers used to run the methods and links to the raw simulated sequencing data used in the evaluation. Furthermore, all created spliced pangenome graphs and pantranscriptome haplotype-specific transcript sets are available for download at the repository for use in other projects. All custom C++, Python and R scripts used for the evaluation and plotting are available at \url{https://github.com/jonassibbesen/vgrna-project-scripts}. 
+\noindent where $\phi$ is the standard normal density function, $\lambda$ is a scaling factor that converts the alignment score into the log-likelihood of a pair-HMM \cite{karlin1990methods}, and $\mu$ and $\sigma$ are the mean and standard deviation of the fragment length distribution modeled using a normal distribution. For paired reads, these parameters are estimated from the alignment path lengths across all fragments that have 1) a mapping quality of at least 30, and 2) the same length for all alignment paths. The fragment length distribution is omitted from the equation when the fragments are single-end reads. With this likelihood, we can compute the posterior probability that the fragment originated from a given HST. Let the set of all HST paths in the cluster be denoted by $T$, and let the set of HST paths an alignment path $a$ is consistent with be denoted by $T_a$. The probability that the fragment (or alignment $A$) originated from an HST is calculated as:
+%\todo{Jonas: Removed enumerate.}
+
+%\todo{Does this mean $\mu=0$ and $\sigma=1$? - Adam. Jonas: We actually remove the normal distribution from the equation.}
+
+\begin{align}
+    p_t=(1-\epsilon)\cdot P(t|A)=(1-\epsilon)\cdot\frac{P(A|t)P(t)}{\sum_{t\in T}P(A|t)P(t)}
+\end{align}
+
+\noindent with
+
+\begin{align}
+    P(A|t)\propto\max_{a\in A}\begin{cases}\frac{L(a)}{\widetilde{\ell}_t} & \mbox{if }t\in T_a\\0 & \mbox{otherwise}\end{cases}
+\end{align}
 
 
-\chapter{Algorithmic infrastructure for pangenomics}
+\noindent Here, $\widetilde{\ell}_t$ is the effective transcript length for $t$ calculated as ${\widetilde{\ell}_t=\ell_t-\mu_{\ell_t}}$. In turn, $\mu_{\ell_t}$ is the mean of the fragment length distribution truncated to ${[1,\ell_t]}$. A similar approach is used in \tool{Salmon} \cite{patro2017salmon}. The effective transcript length accounts for the fact that fragments cannot be sequenced from all positions due to the size of the fragment. If the fragments are single-end reads, the fragment length distribution parameters used to calculate the effective length must be supplied by the user. The prior over HSTs $P(t)$ is taken to be uniform. If the HST probability $p_t$ is below $10^{-8}$, it is truncated to 0 to reduce storage. 
 
-\section{Interfacing with the linear reference-based software ecosystem}
+%\todo{Glenn: I find this part confusing.  Perhaps it can be better explained as part of L(a) above? Jonas: I completely agree that this part can be a bit confusing. L(a) is the likelihood of the alignment path which does not dependent on the effective length. That is why it is not part of L(a). Not sure how to explain it better, but I will try to think about it for the journal submission.} 
+	
+We denote the set of all fragment probabilities in a cluster as $F$ and the probabilities for a fragment $i$ as ${F_i=\left(\epsilon,\textbf{p}\right)}$, where $\textbf{p}$ is the vector of probabilities over all $T$ HSTs in the cluster. Many fragments will have very similar probabilities and can thus be collapsed to save computation resources and memory \cite{nicolae2011estimation,patro2017salmon}. To do this we collapse two fragment probabilities $F_i$ and $F_j$ if they satisfy both of:
+
+%\todo{This is a set of a probability number $\epsilon$, and also a vector $\textbf{p}$. This set has two elements. Are we supposed to be taking the set of $\epsilon$ and also all the items in $\textbf{p}$, removing duplicates (because it's a set)? - Adam. Jonas: Yes, this is not a great notation. I have changed it to normal brackets.}
+% \todo{I have changed it from \{\} to (). Jordan can you confirm that this notation is correct/better?}
+% Jordan: yes, that's better
+
+\begin{align}
+    \left|\epsilon^{i}-\epsilon^{j}\right| &< 10^{-8} \\	\left|p_t^{i}-p_t^{j}\right| &< 10^{-8},\quad\forall t\in T
+\end{align}
+
+We also associate each set of collapsed fragments with $c$, the number of collapsed fragments in the set. The resulting set $E$ of tuples ${\left(\epsilon, \textbf{p}, c\right)}$ is subsequently used to infer the expression of the HSTs in the pantranscriptome.
+%For each set of collapsed probabilities, we keep the number of fragments $c$ in the set: $\textcolor{red}{e=\left(\epsilon,\textbf{p},c\right)}$. The set of collapsed fragment probabilities $E$\textcolor{red}{, with $e\in E$}, are subsequently used to infer the expression of the HSTs in the pantranscriptome. 
+
+%\todo{Sets aren't supposed to do this; is this a tuple instead? - Adam. Jonas: Yes it should have been a tuple.}
+%\todo{Isn't this $e$ here and later? Or should it be $E$ above? - Adam. Jonas: E is the set of e's. That could definitely be more clear. I have updated the text.}
+
+\subsubsection{Inferring haplotype-specific transcript expression}
+
+\tool{rpvg} quantifies the expression of the HSTs in the pantranscriptome using a nested inference scheme (Supplementary Figure~\ref{fig:hst-quantification}c). This is done independently for each cluster. First, the distribution over diplotypes (i.e. pairs of haplotypes) is inferred. A haplotype combination is then sampled from this distribution and expression is inferred conditioned on the sampled haplotypes. This procedure is repeated multiple times to account for the uncertainty in the haplotype estimates. In the following, we will assume the sample is diploid, but the equations and algorithms generalize to any ploidy.
+\newline 
+\newline
+The marginal distribution over diplotypes is approximated by assuming the haplotypes are identical for all transcripts in a cluster. The motivation behind this approximation is that most clusters cover only a small region (e.g. gene) of the genome. However, this approximation can break down when there are partial haplotypes or recombination events in the cluster. Using the transcript and haplotype origin table provided by \tool{vg rna}, the HSTs in the cluster are first grouped by their haplotype origin. Note that since an HST can be consistent with more than one haplotype it can also belong to multiple groups. Next, groups with the same set of HSTs are collapsed resulting in a set of unique haplotype groups. 
+
+Now let us denote the set of haplotype groups as $H$, with each group ${h \in H}$ consisting of a set of HSTs. The objective is to infer the distribution over diplotypes ${d=\left\{h_1,h_2\right\}}$ conditioned on the set of collapsed fragment probabilities $E$. The probability of a diplotype is defined as:
+
+\begin{align}
+    %P(d|E)=P(\{h_1,h_2\}|E)\propto P(h_1)P(h_2)\prod_{e\in E}\left(\epsilon+\frac{1-\epsilon}{2}\left(P(\textbf{p}|h_1)+P(\textbf{p}|h_2)\right)\right)^c
+    P(d|E)=P(\{h_1,h_2\}|E)\propto P(h_1)P(h_2)\prod_{\left(\epsilon, \textbf{p}, c\right) \in E}\left(\epsilon+\frac{1-\epsilon}{2}\left(P(\textbf{p}|h_1)+P(\textbf{p}|h_2)\right)\right)^c
+\end{align}
+%\todo{There's no $e$ inside the product expression - Adam. Jonas: Good point. I have added a clarification in the text below.}
+%\noindent with $\textcolor{red}{e=\left(\epsilon,\textbf{p},c\right)}$ and
+\noindent and
+
+\begin{align}
+    P(\textbf{p}|h)=\frac{\frac{1}{n}\sum_{t\in h}p_t}{\sum_{k\in H}\frac{1}{n}\sum_{t\in k}p_t}\propto\sum_{t\in h}p_t
+\end{align}
+
+\noindent where the prior probability of each haplotype group $P(h)$ is proportional to the number of haplotypes in the group, and $n$ is the number of transcripts in the cluster ($\tfrac{1}{n}$ and $\tfrac{1}{2}$ amount to an approximation that expression is uniform across all transcripts and the two haplotypes, respectively). This model is inspired by similar haplotyping models used in Platypus and other genotypers \cite{rimmer2014integrating,albers2011dindel,poplin2017scaling}. 
+
+% \todo{Is ``over'' the right word here? The domain of the distribution here seems to be all haplotype groups, not a single one, but I don't quite get what the prior of a haplotype group would mean. - Adam. Jonas: Good point. I have changed it to "of each"} 
+% \todo{Is ``this'' $n$? - Adam. Jonas: I have updated the text.}
+
+The distribution over diplotypes is inferred by calculculating ${P(d|E)}$ for all pairs of haplotype groups ${h\in H}$. To reduce the space of haplotype combinations that need to be evaluated, \tool{rpvg} uses a branch-and-bound-like algorithm, where diplotypes containing an improbable haplotype group are not evaluated. Instead, the probability of all diplotypes containing an improbable haplotype group is set to 0. A haplotype group $h$ is labeled to be improbable if its optimal diplotype probability ${P(\{h,h_o\}|E)}$ is ${s\cdot 10^4}$ times lower than the current highest evaluated probability, where $s$ is the number of diplotypes sampled in the next step in the inference. The optimal diplotype probability is defined as
+
+\begin{align}
+    P(\{h,h_o\}|E)\propto P(h)\prod_{\left(\epsilon, \textbf{p}, c\right) \in E}\left(\epsilon+\frac{1-\epsilon}{2}\left(P(\textbf{p}|h)+\max_{h_o \in H}\left(P(\textbf{p}|h_o)\right)\right)\right)^c
+\end{align}
+
+\noindent This value serves as an upper bound on the probability of any diplotype containing $h$. 
+\newline 
+\newline
+Using the inferred distribution over diplotypes the expression of the HSTs in the cluster is inferred. First a diplotype is sampled from the distribution $P(d|E)$ and all HSTs that are consistent with at least one of the haplotypes in the diplotype are collected. We denote this HST subset ${T_s\subseteq T}$ and define the likelihood over the expression values $\boldsymbol{\alpha}$ as 
+
+\begin{align}
+    L(\boldsymbol{\alpha})=\prod_{\left(\epsilon, \textbf{p}, c\right) \in E}\left(\sum_{t\in T_s}\alpha_t p_t\right)^{c_{{\text -}\epsilon}},
+\end{align}
+
+\noindent where $c_{{\text -}\epsilon}$ is the noise-adjusted fragment count: ${c_{{\text -}\epsilon}=c(1-\epsilon)}$. To find the (local) maximum likelihood estimate of the expression values a expectation maximization (EM) algorithm is used. The algorithm iterates between assigning fractional fragment counts to the HSTs and updating the expression values. This is a well known algorithm that is used by many other transcript quantification tools \cite{li2011rsem,nicolae2011estimation,patro2017salmon,bray2016near}. The expression values are initialized uniformly and the EM algorithm is run until convergence or for a maximum of 10,000~iterations. The algorithm is considered converged if 
+
+\begin{align}
+    \frac{\left|\alpha_t^{i}-\alpha_t^{i-1}\right|}{\alpha_t^{i}}\leq0.001,\quad\forall t\in T_s:\alpha_t\geq10^{-8}
+\end{align}
+
+\noindent for 10~consecutive iterations, where $i$ is the index of the current iteration. This criteria is inspired by the one used by \tool{Kallisto} \cite{bray2016near} and \tool{Salmon} \cite{patro2017salmon}. All expression values below $10^{-8}$ of the maximum likelihood estimate are truncated to 0. 
+The diplotype sampling and EM steps are repeated 1,000~times to propagate the uncertainty over diplotypes into the HST expression estimates. Since the EM algorithm is deterministic, the same expression values are inferred for the same diplotype. We therefore only need to run the EM step once for each uniquely sampled diplotype, which can considerably reduce computation time. 
+\newline 
+\newline
+The final output of \tool{rpvg} is the haplotype probability and estimated expression value for each HST in the pantrancriptome. The probability is calculated as the fraction of diplotype samples which included the HST. The expression reported is the average across all diplotype samples (including samples where the HST's expression is zero due to its haplotype being absent from the diplotype). 
+
+\subsection{Transcript quantification evaluation}
+
+We compared \tool{rpvg}'s quantification accuracy against three other transcript quantification tools: \tool{Kallisto}, \tool{Salmon} and \tool{RSEM}. Haplotype-specific transcript indexes for \tool{Kallisto}, \tool{Salmon} and \tool{RSEM} were built from the HST sequence FASTA files generated by \tool{vg rna}. \tool{Salmon} indexing was run with duplicates kept and, on the real data, the reference genome was given as a decoy. The Bowtie2 mapper was used in \tool{RSEM} with the maximum number of alignments per read increased to 1,000. The transcript expression was estimated using default parameters for all methods, except for the real data where strand-specific inference was enabled. \tool{Kallisto} and \tool{Salmon} were run without bias correction as it did not provide a clear advantage on the ``Europe (excl. CEU)'' pantranscriptome using the SRR1153470 reads (data not shown). \tool{RSEM} was only run on the NA12878 sample-specific transcriptome and the ``Europe (excl. CEU)'' pantranscriptome, as it did not scale to the two largest pantranscriptomes. 
+
+\tool{rpvg} was run using default parameters and with two different types of alignments inputs: the standard multipath alignments from \tool{vg mpmap} and single-path alignments generated by finding the best scoring path in the multipath alignments using \tool{vg view}. The fragment length distribution parameters estimated by \tool{vg mpmap} were given as input to \tool{rpvg} when using the single-path alignments as they are lost from the alignment file during the conversion. \tool{rpvg} was run with a ploidy of 2 for all read sets, including CHM13. For the simulated data, the exon-only splicing graphs were used when mapping the reads using \tool{vg mpmap}. These graphs are more comparable to the transcriptomes that the other methods use for (pseudo)-alignment. For the real data, we used the whole spliced pangenome graphs. All HSTs with a haplotype probability below 0.8 were filtered from the \tool{rpvg} output. The SRR1153470 and CHM13 read data was used to optimize the parameters of \tool{rpvg}.  
+\newline 
+\newline
+For the SRR1153470 and ENCSR000AED data, which are both NA12878 cell lines, we compared the quantified HSTs to the NA12878's haplotypes from the 1000 Genomes Project data. We considered an HST consistent with these haplotypes if it matched the sequence of one of the two possible NA12878 haplotype versions of the transcript. The haplotyping performance of each method was then estimated by comparing the number and fraction of quantified HSTs with positive expression that were consistent. 
+
+We used transcripts per million (TPM) to measure expression. For the simulated data we re-calculated the TPM value for all methods. The reason was that we wanted to ensure that there was no bias towards \tool{RSEM}, which was used to estimate the expression profile employed by \tool{vg sim} to parameterize the HST expression values. The TPM value depends on the effective transcript length, which is not calculated in the same manner for each method. Therefore, if this is not corrected, methods that estimate the effective transcript length more similarly to \tool{RSEM} will have an advantage that does not depend on their ability to predict correct expression values. The true fragment length distribution parameters and the effective transcript length approach employed by \tool{rpvg} (similar to \tool{Salmon}) was used when re-calculating the TPM values.
+
+The method's ability to predict the correct expression value was evaluated using the simulated data for which the true expression is known. The true expression values were calculated from a table provided by \tool{vg sim}, which indicates the transcript of origin for each read. The simulated TPM values were calculated in the same manner as described above. We used both Spearman correlation and mean absolute relative difference (MARD) to quantify concordance between estimated and true expression. 
+\newline 
+\newline
+The CHM13 cell line is effectively haploid, so only a single HST is expected to exist for each transcript. We used this feature of the data to measure the haplotype inference performance of each method on the T2T CHM13 data. We defined each HST as either major or minor. Major HSTs were defined as the highest expressed haplotype for each transcript; the rest were defined as minor. The fraction of expression from minor HSTs is a lower bound on the fraction of incorrectly inferred transcript expression. Accordingly, we used the number of major and minor transcripts that each method predicted to be expressed to compare their haplotype inference performance.
+
+\subsection{Code and data availability}
+
+A list of the versions used of each method is available as Supplementary Table~\ref{tab:versions}. All bash scripts with exact command-lines used to generate the results are available at the following GitHub repository: \url{https://github.com/jonassibbesen/vgrna-project-paper}. This includes log files, references to the Docker containers used to run the methods and links to the raw simulated sequencing data used in the evaluation. Furthermore, all created spliced pangenome graphs and pantranscriptome haplotype-specific transcript sets are available for download at the repository for use in other projects. All custom C++, Python and R scripts used for the evaluation and plotting are available at \url{https://github.com/jonassibbesen/vgrna-project-scripts}. 
+
+
+\part{Algorithmic infrastructure for pangenomics}
+
+\chapter{Interfacing with the linear reference-based software ecosystem}
 % surject
 
-\section{Memory-efficient dynamic sequence graphs}
+\chapter{Memory-efficient dynamic sequence graphs}
 % packed graph
 
-\chapter{Graph theoretic contributions}
+\part{Graph theoretic contributions}
 
-\section{Identifying sites of variation in a pangenome graph}
+\chapter{Identifying sites of variation in a pangenome graph}
 
-\section{Walk-preserving transformation of overlapped sequence graphs into blunt sequence graphs}
+\chapter{Walk-preserving transformation of overlapped sequence graphs into blunt sequence graphs}
 
-\chapter{Discussion}
+\section{Preamble}
+
+This chapter consists of the full text of a paper ``Walk-preserving transformation of overlapped sequence graphs into blunt sequence graphs with GetBlunted'', which will be presented at the 2021 meeting of Computability in Europe. I share primary authorship for this paper with Ryan Lorig-Roach. I am responsible for designing and partially implementing the algorithms. Ryan Lorig-Roach also partially implemented the algorithm, and Melissa M. Meredith performed the experimental comparison to comparable algorithms.
+
+\section{Introduction}
+
+% sequence graphs have long history in assembly
+Genome assembly is the process of determining a sample's full genome sequence from the error-prone, fragmentary sequences produced by DNA sequencing technologies.
+Sequence graphs have a long history of use in this field \cite{myers1995toward,pevzner2001eulerian,myers2005fragment}.
+In these graphs, nodes are labeled with sequences derived from sequencing data, and edges indicate overlaps between observed sequences, which may in turn indicate adjacency in the sample's genome (\figref{seqgraphs}A).
+The sample genome then corresponds to some walk through graph.
+% description of de bruijn and overlap graphs / string graphs
+There are several specific sequence graph articulations in wide use, including de Bruijn graphs, overlap graphs, and string graphs.
+They each present computational and informational trade-offs that make them better suited to certain configurations of sequencing technologies and genome complexity.
+
+The common topological features of genome assembly graphs are driven primarily by the repetitiveness of the underlying genomes.
+In many species, a large fraction of the genome consists of repeats (for instance, more than 50\% of the human genome \cite{haubold2006repetitive}).
+Because all copies of a repeat are highly similar to each other, the corresponding nodes in the sequence graph frequently overlap each other.
+In contrast, the unique regions of the genome have few erroneous overlaps.
+These two factors tend to create graphs that consist of long non-branching paths (corresponding to the unique regions), which meet in a densely tangled core with a complicated topology (corresponding to the repeats).
+
+% growth of sequence graphs as formalism in pangenomics
+Recently, sequence graphs have also emerged into prominence in the growing field of pangenomics, which seeks to analyze the full genomes of many individuals from the same species \cite{computational2018computational}.
+In pangenomics, sequence graphs are used to represent genomic variation between individual haplotypes.
+Sequences in the graph furcate and rejoin around sites of variation so that each individual genome corresponds to a walk through the graph (\figref{seqgraphs}B).
+% state of the art practical tools and formal algorithms research
+The growth of pangenomics has fueled major advances in both formal algorithms research \cite{rautiainen2017aligning,jain2019on} and practical genomics tools \cite{garrison2018variation,rautiainen2020graphaligner}.
+
+Pangenome graphs have much simpler topologies than genome assembly graphs.
+Having fuller knowledge of the constituent genomes makes it possible to distinguish different copies of a repeat.
+Thus, pangenome graphs tend to be mostly non-branching, much like the portions of assembly graphs that correspond to unique sequences in the genome.
+Moreover, most of the branching in pangenome graphs consists of localized bubble-like motifs.
+In contrast to assembly graphs, pangenome graphs have few if any cycles.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=.5\textwidth]{bluntfigures/overlap_vs_blunt.pdf}
+\caption{\textbf{A}: An overlapped sequence graph. \textbf{B}: A blunt sequence graph.} \label{fig:seqgraphs}
+\end{center}
+\end{figure}
+
+% focus on blunt ended graphs in this research
+Intuitively, the shared basis in sequence graphs should permit the advances in pangenomics to spill over into genome assembly.
+However, such cross-pollination is stymied by a small difference in the graph formalisms.
+The edges in assembly graphs indicate sequence overlaps, which are necessary because of the uncertain adjacencies in the underlying genome.
+In pangenome graphs, the underlying genomes are known, and the edges are \emph{blunt} in that they indicate direct adjacency with no overlap.
+% translation from blunt to overlap is trivial, but reverse is difficult
+Blunt sequence graphs can be trivially converted into overlap graphs (with overlaps of length 0), but the reverse requires nontrivial merging operations between the overlapping sequences.
+% result is that tools developed for pangenomics remain siloed despite potential uses in genome assembly
+As a result, methods have remained siloed within pangenomics despite potential uses in genome assembly.
+
+In this work, we present a method to transform an overlapped sequence graph into a blunt sequence graph. 
+We state the formal guarantees of our formulation and discuss their computational complexity. 
+We then present an algorithm and compare its results to similar methods.
+
+\section{Problem statement}
+
+% our goal is to produce a translation of overlap to blunt with two properties
+% - all walks through the graph are preserved
+% - no walks through the blunt graph are impossible in the overlap graph
+In transforming an overlapped sequence graph to a blunt one, we seek to provide two guarantees:
+\begin{enumerate}
+    \item All walks in the overlapped graph are preserved in the blunt graph.
+    \item Every walk in the blunt graph corresponds to some walk in the overlapped graph.
+\end{enumerate}
+% z motif creates problems for property 2, must duplicate
+These two properties prohibit the intuitive solution of transitively merging all overlapped sequences.
+Doing so can result in walks that are not present in the overlapped graph, because walks can transition between nodes that are not connected by an edge via the transitively merged sequences (\figref{transitive}).
+Because overlapped sequences cannot be fully merged, it is necessary to retain multiple copies of some sequences in the blunt graph.
+% duplication increases alignment uncertainty, we attempt minimize duplication
+However, excessive duplication can create problems for downstream analysis, for instance by increasing alignment uncertainty.
+Thus, we add one further criterion to the above formulation:
+\begin{enumerate}
+  \setcounter{enumi}{2}
+  \item Minimize the amount of duplicated sequence.
+\end{enumerate}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=.8\textwidth]{bluntfigures/transitive_collapse.pdf}
+\caption{\textbf{A}: An overlapped sequence graph, and \textbf{B}: the blunt sequence graph that results from transitively merging its overlaps. The highlighted walk in the blunt graph does not correspond to any walk in the original overlapped graph.} \label{fig:transitive}
+\end{center}
+\end{figure}
+
+\section{Notation}
+
+An overlapped sequence graph consists of a set of sequences $S$ and a set of overlaps $O \subset (S \times \{+,-\} \times S \times \{+,-\})$. 
+In this notation, the symbols $+$ and $-$ indicate whether the overlap involves a prefix or suffix (collectively \emph{affix}) of the sequence.
+This makes the overlapped graph a bidirected graph. 
+%Additionally, each overlap is labeled with its length. 
+
+In a bidirected graph, a \emph{walk} consists of a sequence of nodes $s_1s_2\ldots s_N$, $s_i \in S$ such that 1) each pair of subsequent nodes is connected by an overlap and 2) if $s_{i-1}$ and $s_i$ are connected by an overlap on $s_i$'s prefix, then $s_i$ and $s_{i+1}$ are a connected by an overlap on $s_i$'s suffix (or vice versa).
+In the case that a walk traverses a node $s \in S$ from suffix to prefix, we interpret the sequence as its \emph{reverse complement}, which is the sequence of the antiparallel strand of the DNA molecule. 
+
+%TODO: state this more rigorously
+Finally, an \emph{adjacency component} is a collection of affixes (in $S \times \{+,-\}$) that can reach each other via a sequence of adjacent overlaps in $O$ (\figref{adjacency}).
+This sequence need not form a valid bidirected walk.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=.6\textwidth]{bluntfigures/adjacency_component_3.pdf}
+\caption{An adjacency component in a larger sequence graph. Each of the indicated affixes can reach the others by a sequence of overlaps.} \label{fig:adjacency}
+\end{center}
+\end{figure}
+
+\section{Methods}
+
+% minimizing duplication requires minimizing number of transitive merges
+To minimize the amount of duplicated sequence, overlapped sequences must be merged. 
+However, we have already mentioned that our criteria prohibit transitively merging all overlaps.
+We must then minimize the total number of groups within which overlaps are merged transitively, which coincides with the number of times the sequences need to be duplicated.
+
+% safe merges need to be part of a biclique
+Consider a group of overlaps that contains $(s_1, s_2, +, -)$ and $(t_1, t_2, +, -)$.
+For merging to not introduce any walks that are not in the overlapped graph, the overlaps $(s_1, t_2, +, -)$ and $(t_1, s_2, +, -)$ must also be overlaps in $O$.
+Extending this logic, the entire group of overlaps must be contained within a \emph{biclique} subgraph of the adjacency component: two sets of affixes $B_1$ and $B_2$ such that every affix in $B_1$ is connected to every affix in $B_2$ by an overlap.
+Thus, we can minimize the number of duplicated sequences by minimizing the number of bicliques needed to cover every overlap edge.
+
+% because adjacency components are usually bipartite (odd cycles require palindromic sequence) and overlaps are approximately transitive, most cases are exactly computable with domino-free algorithm
+The problem of covering edges with the minimum number of bicliques is known as \emph{biclique cover} (\figref{biclique}), and it is known to be NP-hard \cite{orlin1977contentment}.
+However, there are domain-specific features of overlapped sequence graphs that often make it tractable to solve large portions of the graph optimally.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=.2\textwidth]{bluntfigures/biclique_cover.pdf}
+\caption{A biclique cover of an adjacency component with three bicliques.} \label{fig:biclique}
+\end{center}
+\end{figure}
+
+First, many adjacency components are bipartite.
+Consider the case that an adjacency component is not bipartite, in which case there is cycle of overlaps between affixes with odd parity.
+Each overlap indicates high sequence similarity, so an odd cycle means that each sequence is similar to itself, reverse complemented an odd number of times.
+Such sequences are called DNA palindromes, and they do exist in nature.
+However, they comprise a small fraction of most real genomes.
+
+Second, most adjacency components are \emph{domino-free}. 
+This property refers to the absence of a particular induced subgraph, the \emph{domino} (\figref{domino}).
+A sufficient condition to prohibit dominoes is for overlapping to be a transitive property.
+That is, whenever sequence $s_1$ overlaps sequences $t_1$ and $t_2$, and sequence $s_2$ overlaps $t_1$, then $s_2$ also overlaps $t_2$.
+In reality, this is not always the case.
+However, it is very often the case, since overlaps indicate sequence similarity, and similarity is approximately transitive.
+    
+\begin{figure}
+\begin{center}
+\includegraphics[width=.2\textwidth]{bluntfigures/domino.pdf}
+\caption{The domino graph. If either of the dotted edges are present, the induced subgraph is not a domino.} \label{fig:domino}
+\end{center}
+\end{figure}
+
+These features guided the design of the following algorithm. If an adjacency component is bipartite and domino-free, we compute the biclique cover in polynomial time with the algorithm of Amilhastre, Vilaren, and Janssen \cite{amilhastre1998complexity}.
+% remaining cases are handled by combination of maximum bipartite subgraph (max-cut) and heuristic reductions from Ene
+When an adjacency component is bipartite but not domino-free, we instead use the dual graph reduction algorithm of Ene, et al. \cite{ene2008fast}, followed by their lattice-based post-processing if the algorithm does not identify the optimal solution.
+Finally, if an adjacency component is not bipartite, we first reduce it to the bipartite case by computing an approximate solution to the maximum bipartite subgraph problem using the algorithm of Bylka, Idzik, and Tuza \cite{bylka1999maximum}. 
+The maximum bipartite subgraph problem is equivalent to max cut, which is also NP-hard \cite{karp1972reducibility}.
+This process is repeated recursively on the edges that are not included in the bipartite subgraph.
+
+% bicliques are aligned with partial order alignment
+The amount of duplicated sequence is also affected by the manner in which sequences are merged among the overlaps of a biclique.
+To minimize duplicated sequence, we must maximize matches in the alignment between the overlapped sequences.
+This is the multiple sequence alignment problem, which is NP-hard.
+We use the partial order alignment algorithm to approximate the optimal multiple sequence alignment \cite{lee2002multiple}.
+Partial order alignment also has the advantage that the alignment is expressed as a blunt sequence graph, which can be directly incorporated in the full blunt graph.
+
+\section{Implementation}
+
+% based on the GFA format
+We have implemented the algorithm described here as a genomics tool called GetBlunted.
+GetBlunted takes as input a GFA file (a common interchange format for sequence graphs \cite{gfaspec}) and outputs a GFA containing a blunt graph.
+% outputs translation table so that operations in the blunt graph can be translated back to the overlap graph
+In addition, it provides a translation table from sequences in the output to sequences in the input, which can be used to translate analyses performed on the blunt graph into analyses on the overlapped graph.
+% implemented in C++ using libraries that we cite
+The implementation is written entirely in C++, and it use several auxiliary libraries: GFAKludge is used for manipulating GFA files \cite{dawson2019gfakluge}, libbdsg is used to represent sequence graphs \cite{eizenga2020efficient}, and SPOA is used for partial order alignment \cite{vaser2017fast}.
+
+\section{Results}
+
+%Memory
+%Speed
+
+We compared the performance of GetBlunted to two other tools that transform overlapped sequence graphs into blunt graphs: the gimbricate/seqwish \cite{garrison_ekggimbricate_2020,garrison_ekgseqwish_2021} pipeline and Stark \cite{nikaein_hnikaeinstark_2021}. 
+These are, to our knowledge, the only other such tools besides GetBlunted.
+However, they are not completely comparable.
+Neither tool provides the guarantees that GetBlunted does for preserving the walk space of the graph.
+In addition, Stark only works with de Bruijn graphs, a restricted subset of overlap graphs in which all overlaps are exact matches of a uniform length.
+
+We profiled speed and memory usage on three assembly graphs.
+The first two are assembly graphs produced by the Shasta assembler \cite{shafin_nanopore_2020} for the haploid human cell line CHM13 and for human sample HG002.
+Both of these were built using Oxford Nanopore reads\footnote{Publicly available at \url{https://s3-us-west-2.amazonaws.com/miten-hg002/index.html?prefix=guppy\_3.6.0/}}.
+The last graph is a de Bruijn graph of Pacific Biosciences HiFi reads of an \textit{Escherichia coli} strain (SRR10382245), which was constructed using jumboDB \cite{bankevich_assembling_2020}.
+
+All of the bluntifying tools were run on a single core of a c5.9xlarge AWS instance with an Intel Xeon Scalable Processor.
+Memory usage and compute time were measured with the Unix time tool.
+The results of the profiling are presented in Table \ref{table:1}.
+GetBlunted is over 1000 times faster than and comparably memory-intensive to the gimbricate/seqwish pipeline. 
+For de Bruijn graphs, Stark is faster than either tool, although this performance comes at the cost of limited generality.
+
+%Parsimony
+%Guarantees walk space, works on general overlap graphs
+
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{ ||p{2cm}|p{3cm}|p{2.75cm}|p{2cm}|| }
+%|m{3cm}|m{3cm}|m{3cm}|m{3cm}|m{3cm}| } 
+\hline
+Assembly & Bluntification Tool & Run Time (min) & RAM (GB) \\
+\hline
+\multirow{2}{2cm}{HG002 Shasta} & GetBlunted & 0.35 & 9 \\ 
+&  gimbricate/seqwish  & 917.5 &  6 \\ 
+\hline
+\multirow{2}{2cm}{CHM13 Shasta} & GetBlunted & 0.38 & 4 \\ 
+&  gimbricate/seqwish  & 314.6 &  6 \\ 
+\hline
+\multirow{3}{2cm}{\emph{E. coli} de Bruijn} & GetBlunted & 8.36 & 26 \\ 
+&  gimbricate/seqwish  & 10.74 &  4 \\
+& Stark & 0.65 & 3\\
+\hline
+\end{tabular}
+\end{center}
+\caption{Table of speed and memory usage of bluntifing tools run on a single core of an AWS server.}
+\label{table:1}
+\end{table}
+
+\section{Discussion}
+
+In this work, we described an algorithm and software tool, GetBlunted, which transforms overlapped sequence graphs into blunt sequence graphs. 
+This provides a route for sequence graph methods developed for pangenomics to be applied to sequence graphs in genome assembly.
+In both fields, walks through the sequence graph are of primary importance.
+In genome assembly, some walk through the graph corresponds to the sample genome.
+In pangenomics, the genomes used to construct the pangenome each correspond to a walk through the graph.
+GetBlunted provides attractive guarantees that it faithfully preserves the walk space of the input while also producing parsimonious output.
+Other comparable methods either do not provide these guarantees or only provide them in limited cases.
+In addition, GetBlunted is (except in the case of de Bruijn graphs) faster than alternatives that do not provide these guarantees, and it has resource requirements that are easily achievable in any computational environment that is used for genome assembly.
+In the future, GetBlunted could serve as an step in genome assembly pipelines to improve the quality of their overlap graphs.
+It could also facilitate direct analyses of assembly graphs in metagenomics applications.
+
+\part{Discussion}
 
 \appendix
-\chapter{Appendix}
 
-Ancillary material should be put in appendices, which appear BEFORE the
-bibliography. 
+\part{Appendices}
+
+\chapter{Appendix A: Supplementary information for pantranscriptome paper}
+
+\section{Preamble}
+
+This Appendix contains the supplementary information included with the preprint for ``Haplotype-aware pantranscriptome analyses using spliced pangenome graphs'', which is included in this dissertation as Chapter \ref{chapter:mpmap}.
+
+\section{Supplementary Figures}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.8\textwidth]{mpmapfigures/figureS10.pdf}
+\caption{\textbf{Diagram of a multipath alignment} \\
+A diagrammatic comparison between the multipath alignment output of vg mpmap and the single-path alignment output of other graph aligners (such as vg map). \textbf{a} A read and \textbf{b} a sequence graph, which have been colored to indicate which parts of the read could plausibly align to which parts of the graph. \textbf{c} A single-path alignment. The read sequence is aligned to one path from the graph. \textbf{d} A multipath alignment. The alignment can split and rejoin to express the alignment uncertainty to different paths in the graph.
+} \label{fig:multipath-alignment}
+\end{center}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=\textwidth]{mpmapfigures/figureS1.pdf}
+\caption{\textbf{Mapping benchmark to novel splice-junctions using RNA-seq data from NA12878} \\
+RNA-seq mapping results comparing vg mpmap against three other methods using simulated Illumina data (``vg sim (ENC, uniform)'' in Supplementary Table \ref{tab:sim-data}). Shows mapping accuracy and sensitivity for different mapping quality thresholds (colored numbers). An alignment is considered correct if it covers 90\% (\textbf{a}) or 70\% (\textbf{b}) of the true reference sequence alignment. Solid lines show the results using a spliced pangenome graph (spliced reference for STAR) generated using the complete transcript annotation. Dashed lines show the results using a reference generated with a random subset of 80\% of the transcripts in the annotation.
+} \label{fig:splice-junction-mapping}
+\end{center}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.8\textwidth]{mpmapfigures/figureS2.pdf}
+\caption{\textbf{Graph-based mapping benchmark using RNA-seq data from NA12878} \\
+Mapping accuracy and sensitivity for vg mpmap and three other methods using simulated Illumina data (``vg sim (ENC, uniform)'' in Supplementary Table \ref{tab:sim-data}). Colored numbers indicate different mapping quality thresholds. An alignment is considered correct if its start position is within 100 bases from the start position of the true alignment measured using any labeled transcript path in the graph or the linear reference sequence. Solid and dashed lines show the results using a spliced pangenome graph and spliced reference, respectively. 
+} \label{fig:mapping-gampcompare}
+\end{center}
+\end{figure}
+
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=\textwidth]{mpmapfigures/figureS3.pdf}
+\caption{\textbf{Mapping benchmark using RNA-seq training data from NA12878} \\
+RNA-seq mapping results comparing vg mpmap and three other methods using the simulated and real Illumina data that was used in the optimization of vg map and vg mpmap (``vg sim (SRR, uniform)'' and ``SRR1153470'' in Supplementary Table \ref{tab:sim-data} and \ref{tab:read-sets}, respectively). Solid and dashed lines show the results using a spliced pangenome graph and spliced reference, respectively. \textbf{a} Mapping accuracy and sensitivity for different mapping quality thresholds (colored numbers) using simulated data. An alignment is considered correct if it covers 90\% of the true reference sequence alignment. \textbf{b} Mapping rate using real data. The shaded bars show the mapping rate for all alignments and the solid bars for only alignments with a mapping quality above 0. \textbf{c} Pearson correlation between Illumina and Iso-Seq exon coverage using real data as a function of mapping quality threshold. Exons are defined by the Iso-Seq alignments.
+} \label{fig:mapping-srr}
+\end{center}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=\textwidth]{mpmapfigures/figureS4.pdf}
+\caption{\textbf{Mapping benchmark using RNA-seq training data from CHM13} \\
+RNA-seq mapping results comparing vg mpmap against three other methods using real Illumina data that was used in the optimization of vg mpmap (``CHM13'' in Supplementary Table \ref{tab:read-sets}). \textbf{a} Mapping rate. The shaded bars show the mapping rate for all alignments and the solid bars for only alignments with a mapping quality above 0. \textbf{b} Number of read pairs mapped per second per thread. The mapping times were measured using 16 threads on a AWS m5.4xlarge instance. \textbf{c} Maximum memory usage for mapping in gigabytes. 
+} \label{fig:mapping-t2t}
+\end{center}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.8\textwidth]{mpmapfigures/figureS5.pdf}
+\caption{\textbf{Haplotype-specific transcript uniqueness in a 1000 Genomes Project pantranscriptome} \\
+The fraction of HSTs that are unique to each sample in the 1000 Genomes Project (1000GP) when compared to different subsets of samples in the 1000GP. Left box plots show the fraction unique when comparing to all other samples, middle box plots show the fraction unique when comparing to all other samples excluding the samples’ population, and right box plots show the fraction unique when comparing to all other samples excluding the samples’ super population. AFR: African, AMR: Admixed American, EAS: East Asian, EUR: European, SAS: South Asian.
+} \label{fig:hst-populations}
+\end{center}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.8\textwidth]{mpmapfigures/figureS6.pdf}
+\caption{\textbf{Haplotype-specific transcript expression correlation benchmark using RNA-seq data from NA12878} \\
+Haplotype-specific transcript (HST) quantification results comparing rpvg and three other methods using simulated Illumina data (``vg sim (ENC, RSEM)'' in Supplementary Table \ref{tab:sim-data}). Shows Spearman correlation between simulated and estimated expression (in transcripts per million (TPM)) for different pantranscriptomes. Correlation was calculated using either all HSTs in the pantranscriptome (solid bars) or using only the NA12878 HSTs (shaded bars). ``Sample-specific (NA12878)'' is a personal transcriptome generated from 1000 Genomes Project (1000GP) NA12878 haplotypes. ``Europe (excl. CEU)'' is a pantranscriptome generated from European 1000GP haplotypes excluding the CEU population. ``Whole (excl. CEU)'' and ``Whole'' are pantranscriptomes generated from all 1000GP haplotypes without and with the CEU population, respectively. 
+} \label{fig:expression-corr}
+\end{center}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=\textwidth]{mpmapfigures/figureS7.pdf}
+\caption{\textbf{Multipath alignment benchmark using RNA-seq data from NA12878} \\
+Haplotype-specific transcript (HST) quantification results comparing rpvg with single-path and multipath alignments using simulated and real Illumina data (``vg sim (ENC, RSEM)'' and ``ENCSR000AED'' in Supplementary Table \ref{tab:sim-data} and \ref{tab:read-sets}, respectively). Solid lines with circles are results using a pantranscriptome generated from 1000 Genomes Project (1000GP) European haplotypes excluding the CEU population. Dashed lines with triangles and squares are results using a pantranscriptome generated from all 1000GP haplotypes without and with the CEU population, respectively. The single-path alignments were created by finding the best scoring path in each multipath alignment. \textbf{a} Sensitivity and precision of whether a transcript is correctly assigned nonzero expression for different expression value thresholds (colored numbers for ``Whole (excl. CEU)'' pantranscriptome) using simulated data. Expression is measured in transcripts per million (TPM). \textbf{b} Number of expressed transcripts from NA12878 haplotypes shown against the number from non-NA12878 haplotypes for different expression value thresholds (colored numbers) using real data. \textbf{c} Fraction of transcript expression (in TPM) assigned to NA12878 haplotypes for different pantranscriptomes using simulated (left) and real (right) data. \textbf{d} Mean absolute relative difference (MARD) between simulated and estimated expression (in TPM) for different pantranscriptomes using simulated data. MARD was calculated using either all HSTs in the pantranscriptome (solid bars) or using only the NA12878 HSTs (shaded bars). ``Sample-specific (NA12878)'' is a personal transcriptome generated from 1000GP NA12878 haplotypes.
+} \label{fig:expression-multipath}
+\end{center}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=\textwidth]{mpmapfigures/figureS8.pdf}
+\caption{\textbf{Haplotype-specific transcript quantification benchmark using RNA-seq training data from CHM13} \\
+Haplotype-specific transcript (HST) quantification results comparing rpvg against two other methods using real Illumina data that was used in the optimization of rpvg (``CHM13'' in Supplementary Table \ref{tab:read-sets}). All experiments used a pantranscriptome generated from all 1000 Genomes Project (1000GP) haplotypes. Each HST is either classified as major or minor. Major HSTs are defined as the highest expressed haplotype for each transcript; the rest are defined as minor. As CHM13 is effectively haploid, the fraction of expression from minor HSTs is a lower bound on the fraction of incorrectly inferred transcript expression. \textbf{a} Number of major expressed transcripts against the number of minor expressed for different expression value thresholds (colored numbers). Expression is measured in transcripts per million (TPM). \textbf{b} Fraction of transcript expression (in TPM) assigned to major transcripts for different methods.
+} \label{fig:expression-t2t}
+\end{center}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=\textwidth]{mpmapfigures/figureS9.pdf}
+\caption{\textbf{Haplotype-specific transcript quantification benchmark using RNA-seq training data from NA12878} \\
+Haplotype-specific transcript (HST) quantification results comparing rpvg against three other methods using simulated and real Illumina data that was used in the optimization of rpvg (``vg sim (SRR, RSEM)'' and ``SRR1153470'' in Supplementary Table \ref{tab:sim-data} and \ref{tab:read-sets}, respectively). Solid lines with circles are results using a pantranscriptome generated from 1000 Genomes Project (1000GP) European haplotypes excluding the CEU population. Dashed lines with triangles and squares are results using a pantranscriptome generated from all 1000GP haplotypes without and with the CEU population, respectively. \textbf{a} Sensitivity and precision of whether a transcript is correctly assigned nonzero expression for different expression value thresholds (colored numbers for ``Whole (excl. CEU)'' pantranscriptome) using simulated data. Expression is measured in transcripts per million (TPM). \textbf{b} Number of expressed transcripts from NA12878 haplotypes shown against the number from non-NA12878 haplotypes for different expression value thresholds (colored numbers) using real data. \textbf{c} Fraction of transcript expression (in TPM) assigned to NA12878 haplotypes for different pantranscriptomes using simulated (left) and real (right) data. \textbf{d} Mean absolute relative difference (MARD) between simulated and estimated expression (in TPM) for different pantranscriptomes using simulated data. MARD was calculated using either all HSTs in the pantranscriptome (solid bars) or using only the NA12878 HSTs (shaded bars). ``Sample-specific (NA12878)'' is a personal transcriptome generated from 1000GP NA12878 haplotypes.
+} \label{fig:expression-srr}
+\end{center}
+\end{figure}
+ 
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=\textwidth]{mpmapfigures/figureS11.pdf}
+\caption{\textbf{Diagram of haplotype-specific transcript quantification in rpvg
+} \\
+Diagram showing an overview of how rpvg infers expression of haplotype-specific transcripts (HSTs) in a pantranscriptome from a set of paired-end multipath alignments (see Supplementary Figure 10). The colored thin lines correspond to HST paths, and the blue transparent regions correspond to aligned read sequences. \textbf{a} For each fragment, all paths through the multipath alignment graphs are identified using a depth-first-search (DFS). For paired-end reads, the DFS also traverses the fragment insert creating alignment paths of the whole fragment. Only alignment paths that follow an HST path in the pantranscriptome are kept. \textbf{b} The probabilities that each fragment originated from each of the HSTs in a cluster are calculated using the score and length of the fragment alignment paths, and the mapping quality. \textbf{c} The fragment-HST probability matrix is used to infer the expression of the HSTs using a nested inference scheme. First, a distribution over diplotypes (if sample is diploid) is inferred. A haplotype combination is then sampled from this distribution and expression is inferred conditioned on the sampled haplotypes using expectation-maximization. This procedure is repeated a 1,000 times to account for the uncertainty in the haplotype estimates.
+} \label{fig:hst-quantification}
+\end{center}
+\end{figure}
+
+\section{Supplementary Tables}
+
+\begin{table}[H]
+\footnotesize
+\begin{tabular}{L{0.13\textwidth}| L{0.25\textwidth} | R{0.12\textwidth} | R{0.1\textwidth} | R{0.11\textwidth} | R{0.11\textwidth}}
+\textbf{Name} & \textbf{Description} & \textbf{Non-exonic variant filter} & \textbf{Number of samples} & \textbf{Number of exonic variants} & \textbf{Number of total variants} \\
+\midrule
+1000GP (NA12878)& 1000GP variants observed in NA12878 & None & 1 & 152,968 & 4,266,678 \\
+\midrule
+1000GP (EUR, excl. CEU) & All european (EUR) 1000GP variants excluding variants unique to the CEU population & AF $\geq$ 0.002 & 404 & 986,167 & 15,041,731 \\
+\midrule
+1000GP (all, excl. CEU) & All 1000GP variants excluding variants unique to the CEU population & AF $\geq$ 0.001 & 2,405 & 3,808,242 & 31,731,676 \\
+\midrule
+1000GP (all) & All 1000GP variants & AF $\geq$ 0.001 & 2,504 & 3,873,100 & 29,970,512
+\end{tabular}
+\caption{\textbf{Genomic variant (haplotype) sets} \\
+1000GP: 1000 Genomes Project}
+\label{tab:haplotype-sets}
+\end{table}
+
+\begin{table}[H]
+\footnotesize
+\begin{tabular}{L{0.13\textwidth} | L{0.14\textwidth} | R{0.12\textwidth} | L{0.13\textwidth} | R{0.11\textwidth} | R{0.17\textwidth}}
+\textbf{Name} & \textbf{Transcript annotation} & \textbf{Number of transcripts} & \textbf{Haplotype set}$\dag$ & \textbf{Number of haplotypes} & \textbf{Number of haplotype-specific transcripts} \\
+\midrule
+Sample-specific (NA12878)& GENCODE v29 (full-length) & 172,449 & 1000GP (NA12878) & 2 & 235,400 \\
+\midrule
+Europe (excl. CEU) & GENCODE v29 (full-length) & 172,449 & 1000GP (EUR, excl. CEU) & 808 & 2,515,408 \\
+\midrule
+Whole (excl. CEU) & GENCODE v29 (full-length) & 172,449 & 1000GP (all, excl. CEU) & 4,810 & 11,626,948 \\
+\midrule
+Whole & GENCODE v29 (full-length) & 172,449 & 1000GP (all) & 5,008 & 11,835,580
+\end{tabular}
+\caption{\textbf{Pantranscriptomes}\\
+$\dag$See Supplementary Table \ref{tab:haplotype-sets} for more details on the haplotype sets
+}
+\label{tab:pantranscriptomes}
+\end{table}
+
+\begin{table}[H]
+\footnotesize
+\begin{tabular}{L{0.15\textwidth}| L{0.1\textwidth} | L{0.09\textwidth} | L{0.09\textwidth} | L{0.17\textwidth} | R{0.16\textwidth}}
+\textbf{Name / Accession (source)} & \textbf{Reference} & \textbf{Replicate} & \textbf{Cell-line} & \textbf{Sequencing type} & \textbf{Number of read-pairs or alignments} \\
+\midrule
+SRR1153470 (SRA) & \cite{tilgner2014defining} & NA & NA12878 & Paired-end Illumina HiSeq 2000 & 115,359,773 read-pairs \\
+\midrule
+ENCSR000AED (ENCODE) & \cite{encode2012integrated,davis2017encycolopedia} & 1 & NA12878 & Paired-end Illumina HiSeq 2000 & 97,548,052 read-pairs \\
+\midrule
+ENCSR706ANY (ENCODE) & \cite{encode2012integrated,davis2017encycolopedia} & 1-4 & NA12878 & PacBio Iso-Seq & 2,687,717 alignments \\
+\midrule
+CHM13 (T2T) & $\dag$ & 1 & CHM13 & Paired-end Illumina NovaSeq & 90,930,105  read-pairs
+\end{tabular}
+%}
+\caption{\textbf{Read sets and alignments}\\
+$\dag$Downloaded from the T2T consortium data repository:\\ \protect\url{https://github.com/nanopore-wgs-consortium/CHM13}
+}
+\label{tab:read-sets}
+\end{table}
+
+\begin{table}[H]
+\footnotesize
+\begin{tabular}{L{0.12\textwidth}| L{0.14\textwidth} | L{0.13\textwidth} | L{0.12\textwidth} | L{0.15\textwidth} | R{0.11\textwidth}}
+\textbf{Name} & \textbf{Training reads}$\dag$ & \textbf{Haplotype-specific transcripts}$\ddag$ & \textbf{Expression values} & \textbf{vg sim parameters} & \textbf{Number of read-pairs} \\
+\midrule
+vg sim (SRR, uniform) & SRR1153470 & Sample-specific (NA12878) & Uniform& Indel error: 0.001, mean: 277, sd: 43 & 50,000,000 \\
+\midrule
+vg sim (ENC, uniform) & ENCSR000AED & Sample-specific (NA12878) & Uniform & Indel error: 0.001, mean: 216, sd: 24 & 50,000,000 \\
+\midrule
+vg sim (SRR, RSEM) & SRR1153470 & Sample-specific (NA12878) & RSEM estimates & Indel error: 0.001, mean: 277, sd: 43 & 50,000,000 \\
+\midrule
+vg sim (ENC, RSEM) & ENCSR000AED & Sample-specific (NA12878) & RSEM estimates & Indel error: 0.001, mean: 216, sd: 24 & 50,000,000
+\end{tabular}
+%}
+\caption{\textbf{Simulated read sets}\\
+$\dag$See Supplementary Table \ref{tab:read-sets} for more details on the training read sets \\
+$\ddag$See Supplementary Table \ref{tab:pantranscriptomes} for more details on the haplotype-specific transcript sets}
+\label{tab:sim-data}
+\end{table}
+
+\begin{table}[H]
+\footnotesize
+\begin{tabular}{L{0.2\textwidth}| L{0.4\textwidth} | R{0.18\textwidth}}
+\textbf{Software tool(s) or library} & \textbf{Used for step involved in} & \textbf{Version or GitHub commit(s)}$\dag$ \\
+\midrule
+bcftools & Filtering, subsetting and normalizing variants. & v1.9 \\
+\midrule
+samtools & Filtering, sorting, converting and indexing alignments. & v1.9 \\
+\midrule
+bedtools & Converting alignments to regions and calculating coverage. & v2.29.1 \\
+\midrule
+seqtk & Subsampling reads. & v1.3 \\
+\midrule
+HISAT2 & Indexing graphs and mapping reads. & v2.2.0 \& v2.2.1 \\
+\midrule
+STAR & Indexing references and mapping reads. & v2.7.3a \\
+\midrule
+Bowtie2 & Indexing pantranscriptomes and mapping reads. & v2.3.5.1 \\
+\midrule
+RSEM & Indexing pantranscriptomes and inferring expression. & v1.3.1 \\
+\midrule
+Kallisto & Indexing pantranscriptomes and inferring expression. & v0.46.1\\
+\midrule
+Salmon & Indexing pantranscriptomes and inferring expression. & v1.2.1 \\
+\midrule
+rpvg & Inferring expression. & a7a79697 \\
+\midrule
+vg construct, vg convert, vg rna, vg ids, vg index, vg stats \& vg gbwt  & Constructing graphs and pantranscriptomes. & v1.23.0, c861e23e \& 8ff022c3 \\
+\midrule
+vg gbwt & Constructing GBWT r-index. & 883f0f87 \\
+\midrule
+vg view \& vg sim & Simulating reads. & 515a4595 \\
+\midrule
+vg snarls, vg prune \& vg index & Constructing distance and GCSA graph index. & 8ff022c3 \& c4bbd63b \\
+\midrule
+vg map \& vg mpmap & Mapping reads. & c4bbd63b \\
+\midrule
+vg inject, vg paths \& vg surject & Converting alignments between graph (GAM) and reference (BAM). & c4bbd63b \\
+\midrule
+vg index, vg paths \& vg surject & Creating reference transcript alignments for mapping benchmark. & c861e23e \\
+\midrule
+vg stats, vg view \& vg gampcompare & Comparing graph alignments for mapping benchmark. & c4bbd63b \\
+\midrule
+vgrna-project-scripts & Converting expression profiles for simulations. Inferring coverage, overlap and bias statistics for mapping benchmark. Comparing haplotype-specific transcript sequences for expression benchmark. Plotting the results. & 71442ea4 \& afc94cf8 \\
+\midrule
+SeqLib & Parsing alignments and calculating overlaps. & 08771285
+\end{tabular}
+
+\caption{\textbf{Versions of software used}\\
+$\dag$Different subcommands in the vg toolkit and parts of the pipeline stabilized at different times during our development process, hence the variety of commits used.}
+\label{tab:versions}
+\end{table}
+
+\section{Supplementary Notes}
+
+\subsection{vg mpmap algorithm details}
+
+\subsubsection{Seeding}
+
+Algorithm \ref{alg:smems} contains pseudocode for the algorithm used to extract supermaximal exact match (SMEM) seeds. This algorithm utilizes a GCSA2 index to query suffix array intervals, which can be located in the graph similarly to the FM-index \cite{siren2017indexing,ferragina2000opportunistic}. After finding a longest maximal exact match (MEM), the algorithm navigates upward in the implicit suffix tree using a longest common prefix (LCP) array.
+After computing the SMEMs of a read, we find the minimally-more-frequent MEMs for each SMEM, subject to a minimum length. This algorithm for detecting them (Algorithm \ref{alg:mmf-mems}) proceeds by querying the number of occurrences of a “probe substring’’ with a size equal to the minimum length (Algorithm \ref{alg:more-frequent}). If the number of occurrences equal to the number of occurrences of the SMEM, then no minimally-more-frequent MEM that meets the minimum length criterion can contain that probe substring. Alternatively, if the substring occurs more frequently than the SMEM, then it must be part of a minimally-more-frequent MEM. The endpoint of this MEM is found using a bisection search. A benefit of the design of this algorithm is that, if the minimum length is longer than a match of a random sequence is likely to be, it is possible to skip over many characters in the SMEM without ever querying them.
+
+\subsubsection{Reachability between seeds}
+
+Algorithm \ref{alg:reachability} presents a simplified version of the algorithm for computing reachability between exact match seeds. The simplification lies in that seed positions are treated as synonymous with nodes in the graph. In reality, seeds correspond to a path through the graph, not single nodes. Also, collinear seeds sometimes overlap each other either on the read or in the graph. For instance, this occurs when there are indel errors in a homopolymer, in which case the MEMs on either side of the error will both try to match the entire homopolymer. The full algorithm in vg mpmap handles these nuances, but the details are cumbersome to present.
+The three stages of the reachability algorithm achieve linear run time in the typical case in different ways. In stage 1 (Algorithm \ref{alg:reachability-stage-1}), most transitive reachability relationships are not discovered, so the number of edges is usually linear. In stage 2 (Algorithm \ref{alg:reachability-stage-2}), the quadratic factor is limited to the number of noncollinear seeds that can nonetheless reach each other in the pangenome graph. In stage 3 (Algorithm \ref{alg:reachability-stage-3}), an early stopping condition limits the quadratic factor to the number of seeds that have more than one collinear successor.
+
+\subsubsection{Dynamic programming with multiple traceback}
+
+The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified version of the multiple traceback algorithm in which only the two highest-scoring alignments are returned. The logic extends naturally to finding the top $k$ alignments, but the details are somewhat complicated and not particularly enlightening. The pseudocode also presents the multiple-traceback algorithm for a Needleman-Wunsch alignment for the sake of simplicity, but the generalization to POA is straightforward. The insight underlying this algorithm is that the second highest-scoring traceback diverges from the highest-scoring one at the cell where the difference is minimized between the score that is entered in the dynamic programming matrix and the other scores that could have been entered there. Moreover, the score of this alignment differs from the highest-scoring alignment’s score by exactly that difference.
+
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetAlgoLined
+\SetArgSty{}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+\SetKwFunction{FunctionName}{FindSMEMs}
+\SetKwProg{Fn}{Function}{:}{}
+\KwInput{GCSA2 index $G$, LCP array $L$, read $R$}
+\KwOutput{SMEMs between $R$ and sequence graph}
+\Fn{\FunctionName{$G$, $L$, $R$}}{
+ $b \leftarrow |R|$, $e \leftarrow |R|$ \tcp*{ends of a match's read interval}
+ $s \leftarrow G.\mathrm{fullSAInterval}()$ \tcp*{suffix array interval on the graph}
+ \While{$b > 0$}{
+   \tcp{extend match by one character}
+  $\hat s \leftarrow G.\mathrm{LF}(s, R[b - 1])$\;
+  \eIf{$\hat s.\mathrm{empty}()$}{
+    \tcp{the SMEM is exhausted}
+    \textbf{yield} $(s, b, e)$\;
+    $n \leftarrow L.\mathrm{parent}(s)$ \tcp*{match's parent suffix tree node}
+    $e \leftarrow b + n.\mathrm{longestCommonPrefix}()$\;
+    $s \leftarrow n.\mathrm{interval}()$\;
+   }{
+    \tcp{the match was successful}
+   $b \leftarrow b - 1$\;
+   $s \leftarrow \hat s$
+  }
+ }
+ \textbf{yield} $(s, b, e)$
+ }
+ \caption{Stage 1 of MEM finding}
+ \label{alg:smems}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetAlgoLined
+\SetArgSty{}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+\SetKwFunction{FunctionName}{MoreFrequentProbe}
+\SetKwProg{Fn}{Function}{:}{}
+\KwInput{GCSA2 index $G$, read $R$, SMEM $(s, b, e)$, probe substring $(pb, pe)$ with $pb \geq b$ and $pe \leq e$}
+\KwOutput{MEM $(t, p, pe)$, where $p \geq pb$ is the minimum index such that $(p, pe)$ occurs more times than $(b, e)$ in the graph.}
+\Fn{\FunctionName{$G$, $R$, $(s, b, e)$, $(pb, pe)$}}{
+ 	$p \leftarrow pe$\;
+	$t \leftarrow G.\mathrm{fullSAInterval}()$\;
+	\While{$p > pb$}{
+		$\hat t \leftarrow G.\mathrm{LF}(t, R[p - 1])$\;
+		\eIf{$G.\mathrm{count}(\hat t) > G.\mathrm{count}(s)$}{
+			$p \leftarrow p - 1$\;
+			$t \leftarrow \hat t$
+		}
+		{
+			\textbf{break} \;
+		}
+	}
+	\KwRet{(t, p, pe)}
+}
+ \caption{Check if a substring is more frequent than an SMEM (Subroutine of Stage 2 of MEM-finding)}
+ \label{alg:more-frequent}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetAlgoLined
+\SetArgSty{}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+\SetKwFunction{FunctionName}{MoreFrequentMEMs}
+\SetKwFunction{MoreFrequentProbe}{MoreFrequentProbe}
+\SetKwProg{Fn}{Function}{:}{}
+\KwInput{GCSA2 index $G$, read $R$, SMEM $(s, b, e)$, minimum length $L$}
+\KwOutput{All minimally-more-frequent MEMs}
+\Fn{\FunctionName{$G$, $R$, $(s, b, e)$, $L$}}{
+	$mb \leftarrow b$, $me \leftarrow b + L$ \tcp*{the probe substring}
+ 	\While{$me \leq e$}{
+		$t, pb, pe \leftarrow $\MoreFrequentProbe{$G$, $R$, $(s, b, e)$, $(mb, me)$}\;
+		\eIf{$pb \neq mb$}{
+			\tcp{probe cannot occur in any minimally-more-frequent MEM}
+			$mb \leftarrow pb + 1$\;
+			$me \leftarrow mb + L$\;
+		}{
+			\tcp{probe occurs in minimally-more-frequent MEM, bisect to find end}
+			$l \leftarrow me$, $h \leftarrow e$\;
+			\While{$h \neq l$}{
+				$c \leftarrow \lfloor(h + l) / 2\rfloor$\;
+				$t, pb, pe \leftarrow $\MoreFrequentProbe{$G$, $R$, $(s, b, e)$, $(mb, c)$}\;
+				\eIf{$pb \neq mb$}{
+					$h \leftarrow c$\;
+				}
+				{
+					$l \leftarrow c$\;
+				}
+			}
+			\textbf{yield} $(t, mb, h)$\;
+			$me \leftarrow h + 1$\;
+			$mb \leftarrow me - L$\;
+		}
+	}
+}
+ \caption{Stage 2 of MEM-finding}
+ \label{alg:mmf-mems}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetAlgoLined
+\SetArgSty{}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+\SetKwFunction{FunctionName}{SeedGraph}
+\SetKwFunction{TentativeSeedGraph}{TentativeSeedGraph}
+\SetKwFunction{CollinearSeedGraph}{CollinearSeedGraph}
+\SetKwFunction{TransitiveReduction}{TransitiveReduction}
+\SetKwProg{Fn}{Function}{:}{}
+\KwInput{$D$ a DAG, $S = {\{(n, b, e)\}}$ the MEM seeds (represented by a node $n$ and a read interval $[b, e)$) }
+\KwOutput{Transitive reduction of graph with seeds as nodes and edges between the seeds if they are connected by a path in $D$ and the read intervals are collinear.}
+\Fn{\FunctionName{G, S}}{
+        \tcc{ make an initial graph ignoring collinearity on the read}
+        $G_0 \leftarrow$ \TentativeSeedGraph{$D, S$}\;
+        \tcc{rewire edges to respect collinearity}
+        $G_1 \leftarrow$  \CollinearSeedGraph{$G_0$}\;
+        \tcc{remove transitive edges (if any)}
+        $G_2 \leftarrow$ \TransitiveReduction($G_1$)\;
+        \Return{$G_2$}
+}
+\caption{Construct the connectivity graph between seeds}
+\label{alg:reachability}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetAlgoLined
+\SetArgSty{}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+\SetKwFunction{FunctionName}{TentativeSeedGraph}
+\SetKwProg{Fn}{Function}{:}{}
+\KwInput{$D$ a DAG, $S = {\{(n, b, e)\}}$, the set of MEM seeds represented by a node $n$ from $D$, and a read interval $[b, e)$}
+\KwOutput{Graph with seeds for nodes and edges between two seeds whenever there is a walk in the graph that does not include any other seed}
+\Fn{\FunctionName{G, S}}{
+        $G_0.\mathrm{nodes}() \leftarrow S$ \tcp*{nodes correspond to seeds}
+        \ForEach{$n$ \textbf{in} $D.\mathrm{topologicalOrder}()$}{
+        		\eIf{$\exists$ some seed $s = (n, b, e)$}{
+			\tcp{seeds that can reach $n$ can reach $s$}
+			\ForEach{$t$ \textbf{in} $n.\mathrm{predecessorSeeds}()$}{
+				$G_0.\mathrm{addEdge}(t, s)$\;
+			}
+			\tcp{$s$ blocks earlier seeds and reaches $n$'s successors}
+			\ForEach{$m$ \textbf{in} $n.\mathrm{successors}()$}{
+				$m.\mathrm{predecessorSeeds}().\mathrm{insert}(s)$\;
+			}
+		}
+		{
+			\tcp{all seeds that reach $n$ can reach its successors}
+			\ForEach{$m$ \textbf{in} $n.\mathrm{successors}()$}{
+				\ForEach{$s$ \textbf{in} $n.\mathrm{predecessorSeeds}()$}{
+					$m.\mathrm{predecessorSeeds}().\mathrm{insert}(s)$\;
+				}
+			}
+		}
+        }
+        \Return{$G_0$}
+}
+\caption{Stage 1 of constructing connectivity graph between seeds}
+\label{alg:reachability-stage-1}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetAlgoLined
+\SetArgSty{}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+\SetKwFunction{FunctionName}{CollinearSeedGraph}
+\SetKwProg{Fn}{Function}{:}{}
+\KwInput{$G_0$, graph with seeds as nodes and edges indicating that there is a walk connecting the two seeds in the graph (may exclude transitive edges)}
+\KwOutput{Graph with seeds for nodes and edges indicating 1) that there is a walk connecting the two seeds, and 2) the seeds are collinear on the read. Transitive edges may be excluded.}
+\Fn{\FunctionName{$G_0$}}{
+	$G_1.\mathrm{nodes}() \leftarrow G_0.\mathrm{nodes}()$\;
+	 \ForEach{$s$ \textbf{in} $G_0.\mathrm{topologicalOrder}()$}{
+	 	\tcp{initialize a queue with $s$'s predecessors}
+	 	$q.\mathrm{init}()$\;
+	 	\ForEach{$t$ \textbf{in} $s.\mathrm{predecessors}()$}{
+			$q.\mathrm{enqueue}(t)$\;
+		}
+		\While{$q$ \emph{is not empty}}{
+			$t = q.\mathrm{dequeue}()$\;
+			\tcp{$t$ is only in $q$ if it can reach $s$, check for collinearity}
+			\eIf{$t.\mathrm{readInterval()}$ is collinear with $s.\mathrm{readInterval()}$}{
+				$G_1.\mathrm{addEdge}(t, s)$\;
+				\tcp{don't explore $t$'s collinear predecessors, they will only produce transitive edges}
+			}
+			{
+				$s.\mathrm{noncollinearPredecessors}().\mathrm{insert}(t)$\;
+				\tcp{must explore $t$'s collinear predecessors}				
+				\ForEach{$u$ \textbf{in} $t.\mathrm{predecessors}()$}{
+					$q.\mathrm{enqueue}(u)$\;
+				}
+			}
+			\tcp{always explore $t$'s noncollinear predecessors}
+			\ForEach{$u$ \textbf{in} $t.\mathrm{noncollinearPredecessors}()$}{
+				$q.\mathrm{enqueue}(u)$\;
+			}
+		}
+	 }
+	 \Return{$G_1$}
+}
+\caption{Stage 2 of constructing connectivity graph between seeds}
+\label{alg:reachability-stage-2}
+\end{algorithm}
+	
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetAlgoLined
+\SetArgSty{}
+\SetKw{Continue}{continue}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+\SetKwFunction{FunctionName}{\TransitiveReduction}
+\SetKwProg{Fn}{Function}{:}{}
+\KwInput{$G_1$, a DAG}
+\KwOutput{The transitive reduction of $G_1$}
+\Fn{\FunctionName{$G_1$}}{
+	$G_2.\mathrm{nodes}() \leftarrow G_1.\mathrm{nodes}()$\;
+	 \ForEach{$s$ \textbf{in} $G_1.\mathrm{topologicalOrder}()$}{
+	 	\If{$s.\mathrm{numSuccessors}() = 1$}{
+			\tcp{all walks out of $s$ use the edge, it cannot be transitive}
+			\Continue
+		}
+		\tcp{keep track of which seeds have been visited}
+		$v \leftarrow \varnothing$\;
+		\tcp{iterate over neighbors in topological order}
+		\ForEach{$t$ \textbf{in} $s.\mathrm{neighbors}()$}{
+			\eIf{$t \in v$} {
+				\tcp{$t$ is reachable from an earlier edge, $(s, t)$ is transitive}
+				$G_2.\mathrm{removeEdge}(s, t)$\;
+			}
+			{
+				\tcp{mark all nodes reachable from this edge as visited}
+				$v.\mathrm{insert}(t)$\;
+				\ForEach{$u \in t.\mathrm{reachableByDFS}()$}{
+					$v.\mathrm{insert}(u)$\;
+				}
+			}
+		}
+	 }
+}
+\caption{Stage 3 of constructing connectivity graph between seeds}
+\label{alg:reachability-stage-3}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetAlgoLined
+\SetArgSty{}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+\SetKwFunction{FunctionName}{MultipleTraceback}
+\SetKwProg{Fn}{Function}{:}{}
+\KwInput{$M$ the dynamic programming matrix of an alignment, $g$ gap penalty, $S$ score matrix, $Q_1$ and $Q_2$ the sequences being aligned}
+\KwOutput{The two top-scoring alignments}
+\Fn{\FunctionName{$M, g, S, Q_1, Q_2$}}{
+	$i = M.\mathrm{numRows()}$, $j = M.\mathrm{numCols()}$\;
+	$s \leftarrow M[i, j]$ \tcp*{the alignment score}
+	$a_1 \leftarrow \varnothing, a_2 \leftarrow \varnothing$ \tcp*{alignments to trace}
+	$d \leftarrow \varnothing$ \tcp*{point of deflection for 2nd alignment}
+	$\Delta \leftarrow s$ \tcp*{score difference for 2nd alignment}
+	\While{$i \neq 0$ or $j \neq 0$}{
+		\uIf{$M[i,j] = M[i-1,j-1] + S[Q_1[i-1], Q_2[j - 1]]$}{
+			$i',j' \leftarrow i-1,j-1$\;
+		}
+		\uElseIf{$M[i,j] = M[i-1,j] - g$}{
+			$i',j' \leftarrow i-1,j$\;
+		}
+		\Else{
+			$i',j' \leftarrow i,j-1$\;
+		}
+		$a_1.\mathrm{prepend}(i', j')$\;
+		\tcp{look at suboptimal extensions to find next-best traceback}
+		\If{$i',j' \neq i-1,j-1$ and $M[i, j] - (M[i-1,j-1] + S[Q_1[i-1], Q_2[j - 1]]) < \Delta$}{
+			$\Delta \leftarrow M[i, j] - (M[i-1,j-1] + S[Q_1[i-1], Q_2[j - 1]])$\;
+			$d \leftarrow (i, j \longrightarrow i-1, j-1)$\;
+		}
+		\If{$i',j' \neq i-1,j$ and $M[i, j] - (M[i-1,j] - g) < \Delta$}{
+			$\Delta \leftarrow M[i, j] - (M[i-1,j] - g)$\;
+			$d \leftarrow (i, j \longrightarrow i-1, j)$\;
+		}
+		\If{$i',j' \neq i,j-1$ and $M[i, j] - (M[i,j-1] - g) < \Delta$}{
+			$\Delta \leftarrow M[i, j] - (M[i,j-1] - g)$\;
+			$d \leftarrow (i, j \longrightarrow i, j-1)$\;
+		}
+		$i, j \leftarrow i',j'$\;
+	}
+	\tcp{the 2nd best traceback}
+	$i = M.\mathrm{numRows()}$, $j = M.\mathrm{numCols()}$\;
+	\While{$i \neq 0$ or $j \neq 0$}{
+		\uIf{$d.\mathrm{from}() = i, j$}{
+			\tcp{this is where 2nd best traceback differs from optimal }
+			$i',j' \leftarrow d.\mathrm{to}()$\;
+		}
+		\uElseIf{$M[i,j] = M[i-1,j-1] + S[Q_1[i-1], Q_2[j - 1]]$}{
+			$i',j' \leftarrow i-1,j-1$\;
+		}
+		\uElseIf{$M[i,j] = M[i-1,j] - g$}{
+			$i',j' \leftarrow i-1,j$\;
+		}
+		\Else{
+			$i',j' \leftarrow i,j-1$\;
+		}
+		$a_2.\mathrm{prepend}(i', j')$\;
+		$i, j \leftarrow i',j'$\;
+	}
+	\Return{$(a_1, s)$, $(a_2, s - \Delta)$}
+}
+\caption{Find the two highest-scoring alignments from a single DP matrix}
+\label{alg:multiple-traceback}
+\end{algorithm}
+
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % bibliography
