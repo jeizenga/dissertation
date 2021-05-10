@@ -21,12 +21,12 @@
 % package geometry should override the various margin settings from .clo and .cls
 % and also eliminates issues where the default papersize is A4
 \usepackage[letterpaper, left=1.5in, right=1.25in, top=1.25in, bottom=1.25in, includefoot]{geometry}
-% Use PostScript fonts as required by UCSC Dissertation Preparation Guidelines
+% Use PostScript fonts as required by UCSC Dissertation Preparation Guidelines 
 \usepackage{pslatex}
 \usepackage[utf8]{inputenc}
 \usepackage{amssymb}
 \usepackage{amsmath}
-\usepackage{graphicx}
+\usepackage{graphicx,subfigure}
 \usepackage{multirow}
 \usepackage{todonotes}
 \usepackage{url}
@@ -35,10 +35,19 @@
 \usepackage{xr}
 \usepackage{float}
 \usepackage{cite}
+\usepackage{xspace} 
 \usepackage{booktabs}
 \usepackage[singlelinecheck=false,labelfont=bf]{caption}
 \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
-
+\usepackage{epstopdf}
+\usepackage{algorithmicx}
+\usepackage[noend]{algpseudocode}
+\usepackage{marvosym}
+\usepackage{booktabs} 
+\usepackage{lipsum}
+\usepackage{ntheorem}
+\usepackage{makecell}
+  
 \setlength{\tabcolsep}{8pt}
 \renewcommand{\arraystretch}{1.25}
 
@@ -52,6 +61,12 @@
 
 \newcommand{\tool}[1]{\emph{\textsc{#1}}}
 \newcommand{\figref}[1]{Fig. \ref{fig:#1}}
+\newcommand{\vocab}{\textbf}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}[lemma]{Corollary}
+\newtheorem*{proof}{Proof}
 
 \begin{document}
 
@@ -683,20 +698,732 @@ A list of the versions used of each method is available as Supplementary Table~\
 \part{Algorithmic infrastructure for pangenomics}
 
 \chapter{Interfacing with the linear reference-based software ecosystem}
-% surject
+
+\section{Introduction}
+
+not published
+mapping to graphs
+GAM and GAF format
+ecosystem tied to SAM/BAM
+interface between these
+
+
 
 \chapter{Memory-efficient dynamic sequence graphs}
-% packed graph
+
+\section{Preamble}
+
+This chapter consists of the entirety of the paper ``Efficient dynamic variation graphs'', which was published in \emph{Bioinformatics}. I share primary authorship on this paper with Adam M. Novak, and the paper was also a close collaboration with the last author, Erik Garrison. This paper describes and compares several implementations of sequence graphs. I am responsible for implementing HashGraph, PackedGraph, and part of XG. Erik Garrison is responsible for implementing ODGI and part of XG. Adam M. Novak helped design the data model and implement the python bindings. Erik Garrison and I primarily contributed to writing the  paper.
+
+\section{Introduction}
+
+As increasingly many individuals have been sequenced from certain species, the field of \vocab{computational pangenomics} has emerged to analyze whole populations of genomes rather than individual genomes \cite{computational2018computational}.  
+Much of the research in computational pangenomics has coalesced around graph-based approaches for representing populations of genomes \cite{Paten_2017}.
+Unlike conventional string-based representations, graph data structures can represent genomic variation like substitutions, insertions, deletions, and other more complex genomic events.
+
+Graph-based data structures present new computational challenges.
+In addition to sequence, genome graphs must represent topology.
+Given the size of many genomes, this can be quite demanding on computer memory.
+However, the total information content in a genome graph is only incrementally more than the sequences of the pangenome.
+This suggests that significant memory savings should be possible.
+There is also significant impetus to make the graph data structures computationally efficient, since they are frequently the core data structure in pangenomics applications.
+
+Early versions of the variation graph toolkit (\textsc{VG}) \cite{garrison2018variation} have provided a cautionary tale of a na\"ive implementation.
+\textsc{VG} used full-width machine words as identifiers for graph elements, and stored the elements and graph topology in a set of hash tables.
+Loading the 1000 Genomes Project's variant set into the \textsc{VG} toolkit used to consume more than 300~GB of memory, which is $\sim$30 times as large as the serialized representation \cite{Garrison_2019}.
+
+Although \textsc{VG} provided a memory-efficient representation of the graph (\textsc{XG}) that could be used during read mapping and variant calling, this representation did not allow for dynamic updates to the graph.
+The dynamic implementation remained necessary for graph-modifying steps of \textsc{VG} pipelines, such as the original construction of the graph and augmenting the graph with novel variants.
+Some pipelines could be made feasible by breaking large graphs into connected components.
+However, this strategy reduces efficiency, and it is untenable for pangenome graphs that consist of a single component.
+
+To overcome this limitation, we have developed three new graph genome data structures that are dynamic (allowing efficient updates and edits) and also memory-efficient for real world genome graphs.
+Here, we compare the performance of these data structures to the original \textsc{VG} representation and to \textsc{XG}, using a diverse collection of genome graphs obtained during our work in graphical pangenomics.
+
+In addition to demonstrating the possibility of working with large, complex graphs in small amounts of memory, these implementations expose a common API based on the \textsc{HandleGraph} model described below.
+This model provides an interface to genome graphs, based on their fundamental elements, which is intended to be implementable atop a broad diversity of graph storage designs.
+The \textsc{VG} toolkit has been refactored to use this API as its default means of loading, saving, and manipulating graphs since version 1.22.0, allowing it to use any of the implementations presented here. 
+
+%To support reuse by other researchers,
+We have packaged these implementations behind equivalent C++ and Python APIs in \texttt{libbdsg}.
+This software library will reduce the need for individual research groups to continually reimplement these core data structures and ease the development of algorithms that manipulate large, complex pangenome graphs.
+Moreover, the reduction in memory requirements makes it possible to move workloads that would otherwise need specialized high-memory machines onto cheaper ones that often also have more processing power (for example, from Amazon's r4 instances to c5 instances).
+Combined with improvements in access speed over the previous \textsc{VG} dynamic graph implementation, substantial cost and time savings can be realized.
+
+\section{Implementation}
+
+\subsection{Data model}
+
+Our libraries adopt node-labeled bidirected graphs as a formalism for sequence graphs.
+In a bidirected graph, nodes are considered to have left and right ``sides'', and edges connect two sides rather than two nodes.
+In bidirected sequence graphs, a node's sides correspond to the 5' and 3' ends of its DNA sequence. 
+Nodes can be traversed either from left to right, which is interpreted as the forward strand of the sequence, or from right to left, which is interpreted as the reverse complement.
+This provides a natural means to encode DNA strandedness.
+
+Longer sequences can be formed by concatenating the sequences of multiple adjacent nodes together.
+These nodes form a path, which is defined as a list of oriented nodes (either forward or reverse), such that the graph contains an edge between the adjacent sides of each pair of subsequent oriented nodes in the list\footnote{Unlike the usage in many graph theoretic contexts, we do not intend the term path to indicate that these nodes must be distinct.}.
+Some paths correspond to sequences of interest, such as reference genomes or annotations of the reference.
+Because paths like these are so frequently important in practice, our graph formalism also includes a set of paths along with the graph's node and edges.
+
+\subsection{The \textsc{HandleGraph} interface}
+
+The \texttt{libhandlegraph} library describes an interface that exposes basic operations on our sequence graph data model.
+The \textsc{HandleGraph} model focuses on five fundamental entities in bidirected sequence graphs (Figure \ref{fig:graph}):
+
+\begin{itemize}
+\item \emph{Nodes} identify pairs of complementary DNA strands and have unique numerical identifiers (IDs).
+\item \emph{Strands} represent one strand of a node's DNA sequence.
+\item \emph{Edges} link pairs of strands, in order.
+\item \emph{Paths} represent sequences of interest as paths through the graph.
+\item \emph{Steps} describe paths' visits to nodes' strands.
+\end{itemize}
+
+The defining feature of the model is that none of these entities are accessed directly.
+Instead, they are accessed via \emph{handles}, which are references modeled after the concept of file handles.
+The handles are implemented as a data type with no methods and no prespecified meaning for its contents.
+Thus, we say that handles are ``opaque'' in that user code cannot usefully look inside them or manipulate their contents.
+Instead, the \texttt{libhandlegraph} interface requires the sequence graph implementation to provide queries that consume and produce handles, to expose graph information to users.
+
+%The handles are then passed back to the API to refer to these entities when performing operations and making queries.
+For example, we could obtain a handle to a strand from a \textsc{HandleGraph} implementation by providing a node's ID and an orientation (forward or reverse).
+We could then provide this handle to another of the graph's methods to obtain handles to this strand's neighbors, and a further method would map the neighbors' handles to their node IDs.
+Alternatively, we could obtain a handle to a path from its name (e.g. ``chr22''), and then iterate over handles to the path's steps to follow its course through the graph.
+%The actual contents of a handle are unspecified, which gives significant flexibility to the implementation.
+%An implementation need not actually store the handle in its unpacked form.
+%Handles might be implicitly represented internally, in minimal space.
+
+One benefit of this design is that any algorithm designed for one \textsc{HandleGraph} implementation can be applied to all other implementations.
+Since the actual contents of a handle are unspecified, this benefit is achieved while simultaneously maintaining flexibility in the implementation.
+Another benefit is that, since the user works only through handles that they cannot forge or modify, their ability to make mistakes can be restricted.
+For example, the interface can enforce the constraints that define valid paths through bidirected graphs during edge traversal.
+Furthermore, implementations can be made memory-safe by eliminating raw pointers and other direct access to graph elements.
+
+%This prevents common mistakes that the developers identified in their work on the VG project.
+%Taken together, these benefits enable code that focuses on the algorithms rather than on boilerplate bookkeeping.
+ 
+\begin{figure}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{handlefigures/GRaphchrXpaper.png}
+	\end{center}
+	\caption{{\label{fig:graph}
+        \textbf{Entities in the bidirected sequence graph.}
+        Top: a variation graph showing \emph{nodes} (yellow rectangles), each of which contain a forward and reverse \emph{strand} (red solid and dashed rectangles, respectively).
+        Strands show the node identifier, the direction ($+$ or $-$), and the sequence of the strand.
+        Note that reverse strands show the reverse complement sequence of the forward strand.
+        All \emph{edges} are shown as connections between nodes, with forward-to-forward edges denoted by solid lines, and reverse-to-reverse edges denoted by dashed lines.
+        Two edges that invert from forward to reverse and reverse to forward are shown with dotted lines.
+        Edges run from the strand at their beginning to that at their end, as indicated by the arrowhead.
+        Bottom: an illustration of four \emph{paths}.
+        Each has a name, and can be referenced by a handle, which are omitted for brevity.
+        Each path is shown in its natural direction as a series of connected \emph{steps} that refer to strands in the graph.
+        The first two paths differ by a SNP, with one passing through \texttt{2+:T}, and the other through \texttt{3+:G}.
+        The third path is the reverse complement of the first.
+        The fourth is the same as the first, but contains an inversion, passing through \texttt{5-:AATC} rather than \texttt{5+:GATT}.
+      }
+    }
+\end{figure}
+
+\subsection{Graph implementations}
+
+We consider five implementations of the \textsc{HandleGraph} model.
+To ground our experimental results, here we we provide a high-level overview of each implementation.
+Two implementations, \textsc{VG} and \textsc{XG}, have been described previously \cite{garrison2018variation,Garrison_2019}.
+The others are combined in the \texttt{libbdsg} library (\url{https://github.com/vgteam/libbdsg}), which provides three concrete implementations: \textsc{HashGraph}, \textsc{ODGI}, and \textsc{PackedGraph}.
+Each implementation represents a different tradeoff in terms of speed, memory use, and capabilities.
+All of the implementations except \textsc{XG} are dynamic.
+They support efficient addition and deletion of nodes, edges, paths, and steps, as well as some specialized methods such as splitting a node into multiple shorter nodes.
+Table \ref{table:comparison} provides a high level summary of the differences between the \texttt{libbdsg} implementations.
+%Readers seeking a precise description of each implementation should refer to developer documentation and code referenced in this section.
+
+\subsubsection{\textsc{VG}}
+
+We have extended the graph representation in \textsc{VG}, previously described in \cite{garrison2018variation}, to match the \textsc{HandleGraph} API.
+The backing data structures used remain the same.
+The graph entities are stored as objects in a backing vector, and referred to internally by hash tables that map between node identifiers and pointers into this vector.
+Edges are indexed in a hash table mapping pairs of handles to edge objects.
+Paths are stored in a set of linked lists, with a hash table mapping between nodes and path steps.
+This arrangement was tenable for the early development of algorithms working on variation graphs.
+Its inefficiency, caused by unnecessary overheads and data duplication, has resulted in significant difficulties for groups working with \textsc{VG}.
+The other \textsc{HandleGraph} implementations respond to the limitations of this approach.
+In version 1.22.0, vg was updated to use \textsc{HashGraph} (below) as the default format, though it remains compatible with all implementations described in this paper via the \textsc{HandleGraph} API.
+
+%Its documentation can be found at \url{https://vgteam.github.io/vg/classvg_1_1VG.html}.
+
+\subsubsection{\textsc{XG}}
+
+\textsc{XG} was initially developed in response to the memory and runtime costs of \textsc{VG}, which prevent its application to large graphs.
+It additionally provides positional indexes over paths that are required for read mapping and variant calling, and is the graph data model used in most established bioinformatic operations on variation graphs \cite{garrison2018variation,hickey2020genotyping}.
+Unlike other \textsc{HandleGraph} implementations, \textsc{XG} is a static graph index.
+This permits a more powerful set of efficient queries against the graph, especially for paths.
+The encoding is designed to balance speed and low memory usage.
+The topology of the graph is encoded in a single vector of bit-compressed integers, which promotes cache efficiency.
+Rank and select operations on succinct bit vectors are used to provide random access over the variable-length records, which each encode a node's sequence, ID, and edges.
+Embedded paths are encoded in variable-length integer vectors with Elias gamma encoding.
+Rank and select operations on succinct bit vectors also provide queries by base-pair position along paths.
+A detailed description of \textsc{XG} can be found in \cite{Garrison_2019}.
+%Its documentation can be found at \url{https://github.com/vgteam/xg/blob/master/README.md}.
+
+\subsubsection{\textsc{HashGraph}}
+
+\textsc{HashGraph} is a relatively simple encoding, which is largely similar to the original \textsc{VG} graph.
+As such, it can be seen as a streamlined point of comparison for the other new dynamic graph implementations.
+However, the simplicity of this encoding has the benefit of allowing fast queries.
+Thus, even though \textsc{HashGraph} still has relatively high memory requirements, it can still be useful in high memory compute environments or for small sequence graphs (such as subgraphs of genome graphs).
+
+Like \textsc{VG}, \textsc{HashGraph} encodes the topology of the graph in a hash table indexed by node IDs.
+However, what were separate hash tables in \textsc{VG} have been consolidated to avoid storing the keys multiple times.
+The hash table it uses is a drop-in replacement for the equivalent standard library (STL) data structure, and has been shown to outperform it in empirical evaluations \cite{brehm2019hash}.
+Each hash table entry contains the sequence, an adjacency list of the edges in two STL vectors, and a vector indicating the path steps that the node can be found on.
+The graph's paths are represented using doubly-linked lists to support efficient modification at any position.
+
+In contrast to the more memory-efficient implementations, all of these data structures support computation in their native in-memory representation.
+Thus, the run time to access graph elements does not also include decompressing the data.
+This is how \textsc{HashGraph} maintains its comparative speed advantage.
+
+%\textsc{HashGraph} has speed and simplicity as its primary goal.
+%The data structures used in HashGraph are largely similar to the original \textsc{VG} graph.
+%It represents the graph nodes as a collection of node objects in a \texttt{sparsepp} hash table (selected due to our familiarity with the project and its ability to outperform the standard library \cite{brehm2019hash}), while paths are implemented as doubly-linked lists.
+%Edges are recorded in vectors attached to each node that they connect.
+%This adjacency list encoding is appropriate for genome graphs, which are typically very sparse.
+%Each node object maintains a vector of pointers to the path steps that traverse it.
+%Most of \textsc{HashGraph}'s component data structures are uncompressed STL objects which can be used efficiently in their native in-memory arrangement.
+%\textsc{HashGraph} trades memory for time, and thus is most appropriate for small graphs (from small genomes or small regions of larger genomes) or for high-memory compute environments.
+%Its implementation can be found at \url{https://github.com/vgteam/libbdsg/blob/master/include/hash_graph.hpp}.
+
+\subsubsection{\textsc{ODGI}}
+
+\textsc{ODGI} (Optimized Dynamic Graph Implementation) is based on a node-centric encoding that is designed to improve cache efficiency when traversing or modifying the graph.
+This encoding is split between graph topology and paths, which is important for achieving a balance of runtime performance and memory usage on graphs with large path sets.
+It uses delta encoding of edges and path steps to reduce the cost of representing graphs with local partial order and sparsity, both of which are common features of pangenome graphs.
+\textsc{ODGI} is the default data model of the \textsc{ODGI} toolkit (\url{https://github.com/vgteam/odgi}), which provides high-level algorithms for graph manipulation and interrogation that are designed to work at the scale of large pangenomes.
+
+In \textsc{ODGI}, each node $\mathcal{N} = ( \mathcal{B}, \mathcal{P} )$ is represented by a structure that contains a byte array $\mathcal{B} = (\mathcal{Q}, \mathcal{E})$ encoding its sequence and associated edges, and a compressed integer vector $\mathcal{P} = \mathcal{S}_1 \ldots \mathcal{S}_{s}$ describing the path steps that traverse it.
+The full graph model is simply an array of these node records $\mathcal{G} = \mathcal{N}_1 \ldots \mathcal{N}_{|\mathcal{G}|}$ with some additional data structures to allow for random access of paths by name, and to maintain important statistics about the size of the graph, its node ID space, and its path set.
+
+Each node's sequence $\mathcal{Q}$ is stored using a full byte per character at the start of the byte array $\mathcal{B}$.
+This allows \textsc{ODGI} to represent protein as well as DNA sequence graphs, and allows for copy-free reference to the node sequences. % which can improve the performance of algorithms which interact with the sequence space of the graph.
+The edges that begin or end at the node are recorded in the remainder of $\mathcal{B}$, encoded as deltas between the rank of the other end of the edge and the current node. 
+% TODO make more clear that the objective is efficient path encoding
+%The set of $s$ steps traversing the node is recorded as an array of step records
+
+\textsc{ODGI} stores paths as bidirectional linked lists that allow efficient insertions, deletions, and replacements of path steps.
+These paths are encoded in a manner that exploits common properties of pangenome graphs, and node-level data structures are organized to support efficient operation on graphs with very deep path coverage.
+The path steps $\mathcal{P} = \mathcal{S}_1 \ldots \mathcal{S}_{s}$ on each node are recorded as a series of records in a dynamic integer vector which is compressed so that only the largest integer entry is stored at full bit-width \cite{prezza2017framework}.
+Each step $\mathcal{S} = (p_{id}, \delta_p, \delta_n, r_p, r_n)$ contains a path identifier $p_{id}$, references to the previous $\delta_p$ and next $\delta_n$ node ID and strands on the path encoded as deltas relative to the current node, and the ranks of the previous $r_p$ and next $r_n$ steps among the path steps on their respective nodes.
+This path encoding scheme is similar to that used in the dynamic GBWT \cite{siren2020haplotype}, but differs in that the paths are not prefix-sorted.
+%It is designed to exploit the sparse and orderable nature of genome graphs.
+%If the graph is topologically sorted and node identifiers reflect this sort, the each path step will tend to connect nodes which have a small difference in identifier space.
+
+%(e.g. from $n_{5} \to n_{7}$), then the maximum bit-width of the path vector will be low, resulting in good compression.
+
+% TODO add footnote mentioning odgi toolkit
+
+
+
+\subsubsection{\textsc{PackedGraph}}
+
+\textsc{PackedGraph} is designed to have a very low memory footprint.
+The backing data structures are implemented using bit-compressed integer vectors.
+The bit-width of these vectors is chosen dynamically, starting with a bit-width of 1 and  then reallocating the vector at a higher width whenever an edit operation introduces an integer that is too large to be represented with the current width.
+In the typical case that the value of $i$-th entry in the vector is $O(i)$, these reallocations have an  $O(1)$ amortized run time per edit.
+
+Many of the integer vectors tend to also have entries that are highly correlated with their neighbors.
+\textsc{PackedGraph} exploits this characteristic to achieves greater compression by only storing one entry per fixed-size window at full bit-width.
+ The rest of the entries are stored in a separate integer vector and expressed as a difference from that entry.
+ Since the differences within a window tend to be small, this encoding keeps the bit-width for each window small as well.
+
+The data associated with each node is recorded in several compressed integer vectors (at the same index in each).
+Contrast \textsc{XG} and \textsc{{ODGI}}, which encode data in a single vector to improve cache efficiency.
+Recording only one homogenous data type in a vector increases the correlation between neighboring values, which in turn improves compression.
+The adjacency list for the graph, the steps that each node is found on, and the paths themselves are represented using linked lists.
+The linked lists reside within the same bit-compressed integer vectors, where pointers are created by treating some integer entries as indexes into the vector itself.
+This pointer encoding also guarantees the technical condition that accessing the $i$-th entry is $O(i)$.
+The linked lists that occur on every node (the adjacency lists and node step lists) are included in a single vector across all nodes.
+This serves two purposes.
+First, the windowed compression scheme in the integer vectors is inefficient if lists are smaller than the window size, as is often the case.
+Second, due to the local partial order that is found in many pangenome graphs, neighboring nodes often connect to the same nodes and are found on the same paths as each other.
+Thus, the values they store are also highly correlated.
+%Most of its component data structures are---conceptually speaking---linked lists.
+%However, they are implemented using vectors of bit-compressed integers, where pointers are produced by treating some of the integer entries as indexes into the vector that contains them.
+%The bit-width can be determined dynamically.
+%Doing so does not affect the amortized asymptotic run time of graph operations in the typical case that the value of $i$-th entry in the vector is $O(i)$.
+%The vector uses a windowed bit compression scheme in which only one value within a window is maintained at its full bit-width.
+%The remaining entries are represented as differences from this value.
+%In the typical case where adjacent entries in the vector are highly correlated, this helps keep the bit-width low and the compression high.
+%Its implementation can be found at \url{https://github.com/vgteam/libbdsg/blob/master/src/packed_graph.cpp}.
+
+%Longer-range jumps do occur, but they tend to be more rare.
+%Modifying path step records can be expensive, but when the number of traversing paths is relatively small, it remains in higher caches and can be accomplished efficiently.
+
+\begin{table}
+  \centering
+\begin{tabular}{>{\raggedleft\arraybackslash}p{.23\columnwidth}|>{\raggedright\arraybackslash}p{.2\columnwidth}>{\raggedright\arraybackslash} p{.2\columnwidth}>{\raggedright\arraybackslash} p{.24\columnwidth}}
+\textbf{Model} & HashGraph & ODGI & PackedGraph  \\
+\hline
+\textbf{Design goal} & Simplicity, speed & Memory efficiency & Balanced speed/memory \\
+\Xhline{0.1\arrayrulewidth}
+\textbf{Topology data structure} & Hash table & Single integer vector & Several integer vectors \\
+\Xhline{0.1\arrayrulewidth}
+\textbf{Topology compression} & None & Delta encoding & Windowed bit compression \\
+\Xhline{0.1\arrayrulewidth}
+\textbf{Sequence compression} & None & None & Bit compression \\
+\Xhline{0.1\arrayrulewidth}
+\textbf{Pointer encoding} & Memory addresses & Delta-encoded ranks & Vector indexes \\
+\hline
+\end{tabular}
+\caption{
+  \textbf{Comparison of features between libbdsg graph implementations.}
+  The three graph implementations all use adjacency lists to encode graph topology and linked lists to encode paths. 
+  The differences in encoding these structures reflects different design goals for each implementation.
+}
+\label{table:comparison}
+\end{table}
+
+
+\subsection{Python binding}
+
+We have implemented a Python binding to the graph implementations in \texttt{libbdsg} using Pybind11 \cite{pybind11}.
+This allows the data structures to be used in Python applications, significantly lowering the barrier-to-entry for pangenomic application developers.
+This functionality is documented at \url{https://bdsg.readthedocs.io}, including a tutorial.
+This documentation also serves as useful introduction to the \textsc{HandleGraph} API.
+%The full implementation of \textsc{ODGI} can be found at \url{https://github.com/vgteam/libbdsg/blob/master/src/odgi.cpp}.
+
+\subsection{Code availability}
+
+Both \texttt{libhandlegraph} and \texttt{libbdsg} are open source under an MIT License.
+They are available on GitHub at \url{https://github.com/vgteam/libhandlegraph} and \url{https://github.com/vgteam/libbdsg}.
+Documentation for the two libraries, including the C++ handle graph API, \textsc{HashGraph}, \textsc{ODGI}, and \textsc{PackedGraph}, is available at \url{https://bdsg.readthedocs.io} alongside the documentation for the Python binding.
+%\begin{figure}[!tpb]%figure2
+%%\centerline{\includegraphics{fig02.eps}}
+%\caption{Caption, caption.}\label{fig:02}
+%\end{figure}
+
+
+\section{Evaluation}
+
+\subsection{Human genome with structural variants}
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{handlefigures/HGSVC_sorted_gfa.png}
+	\end{center}
+	\caption{{\label{fig:hgsvc}
+        \textbf{Performance on a graph of structural variants from the HGSVC.}
+        Abbreviations used here and in subsequent figures and tables: vg = \textsc{VG}, hg = \textsc{HashGraph}, og = \textsc{ODGI}, pg = \textsc{PackedGraph}, xg = \textsc{XG}.
+        All four new graph implementations compare favorably to \textsc{VG}.
+        \textsc{PackedGraph} tends to be the most memory efficient, \textsc{HashGraph} tends to be the fastest, and \textsc{ODGI} is balanced in between.
+        \textsc{XG} provides good performance on both memory usage and speed, but it is static.
+        }
+      }
+\end{figure}
+
+We measured the core operation performance of the four graph implementations and the graph class from the popular \textsc{VG} software (as implemented prior to version 1.22.0).
+In particular, we measured 1) memory usage to construct a graph, 2) time to construct a graph, 3) memory usage to load an already-constructed graph, and 4) time to access nodes, edges, and steps of a path.
+These access operations are one of the major drivers of run time in pangenomic applications, such as \textsc{VG}'s read mapping algorithm. 
+Accesses were performed with a single thread, and the reported access time is the average time taken when accessing each graph element sequentially.
+All evaluations were performed on a~3.1~GHz Intel Xeon Platinum~8000~series processor.
+The presented results are from a graph describing the structural variants of the Human Genome Structural Variation Consortium \cite{chaisson2019multi}, which was recently used to genotype structural variants \cite{hickey2020genotyping}.
+Specifically, the graph consists of the GRCh38 primary scaffolds and 72,485 indel variants ranging in size from 50~bp to 76~kbp.
+The results generally match our expectations based on the implementations' design goals (Figure \ref{fig:hgsvc}).
+
+\subsection{Genome graph collection}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.5\textwidth]{handlefigures/build_and_load_memory_boxplot.pdf}
+  \caption{
+    \label{fig:prof1}
+    \textbf{Memory requirements for model construction and loading.}
+    Memory costs versus graph sequence size for the graph collection, colored by \textsc{HandleGraph} model.
+    The memory requirements for graph construction tend to be higher than those for loading the graph model.
+    All methods show fixed overheads of several megabytes, seen in the flat tail to the left of both plots.
+    Outside of this region, all methods show roughly linear scaling in both build and load costs per input base pair.
+    The relative differences in memory costs appear to be stable between different methods across many orders of magnitude in graph size.
+    }
+\end{figure}
+ 
+\begin{figure}
+  \centering
+  \includegraphics[width=0.5\textwidth]{handlefigures/iteration_per_second_boxplot.pdf}
+  \caption{
+    \label{fig:prof2}
+    \textbf{Graph element enumeration performance.}
+    Iteration performance for edges, nodes, and path steps for the full graph collection, shown in terms of elements per second.
+    \textsc{HashGraph} provides the highest performance for all element iteration types on smaller graphs, but this performance falls of with larger graphs, presumably due to scaling properties of the backing hash tables.
+    The same pattern can be seen for \textsc{VG}, although the overall performance is worse.
+    Although it has the worst edge iteration performance, \textsc{PackedGraph} provides good performance on node and path step iteration.
+    The relative path encoding in \textsc{ODGI} yields poor performance on path iteration, and node decoding overheads appear to reduce its node iteration performance, but it has good graph topology traversal performance, perhaps due to cache efficiency of the edge encoding.
+    \textsc{XG} provides excellent iteration performance in all cases.
+    }
+\end{figure}
+
+To compare the methods' performances across a wide variety of different graphs, we applied each to a collection of 2299 graphs collected during our research on graphical pangenomics.
+For each graph and graph implementation, we measured the same metrics described in the previous section as well as various graph properties including size, edge count, cyclicity, and path depth.
+We summarize these results in Figures \ref{fig:prof1} and \ref{fig:prof2}.
+
+For graph construction and loading, we observe similar trends as for the HGSVC graph.
+\textsc{VG}'s performance in terms of memory usage is very poor, both during construction and load.
+For construction and load, all models exhibit largely linear scaling characteristics, outside of very small graphs where static memory overheads dominate.
+\textsc{PackedGraph} yields the best memory performance for larger graphs (which are mostly the chromosomes of the 1000 Genomes Project graph), while for the medium-sized graphs in the collection ($\sim$1~Mbp), \textsc{ODGI} requires less memory.
+
+For graph queries and iteration, the relative performance of the models is largely maintained across the entire range of graph sizes.
+However, we observe that the hash-based models (\textsc{VG} and \textsc{HashGraph}) have very good performance for smaller graphs (in handle and edge enumeration) but decrease in throughput as the graph size increases.
+Smaller, less dramatic decreases in performance can be seen for the other implementations.
+For path enumeration, the highest-performing methods are \textsc{XG} and \textsc{HashGraph} at approximately 10 times faster than \textsc{ODGI}, whose relative path storage is costly to traverse.
+
+\subsection{1000 Genome Project chromosome graphs}
+
+Variation graphs built from the 1000 Genomes Project (1000GP) variant catalog and the human reference genome have fairly homogenous and regular features.
+In addition, they have connected components of very different sizes, each corresponding to a chromosome.
+This provides a natural, fairly controlled means to explore the scaling behavior of our data structures.
+Moreover, graphs of this form are seeing increasing use in variant-aware resequencing analyses \cite{crysnanto2019sequence}.
+Thus, the performance of data structures on these graphs is of general interest.
+
+\begin{figure}[p]
+  \centering
+  \includegraphics[width=0.5\textwidth]{handlefigures/1000gp_chroms_node_count.pdf}
+  \caption{
+    \label{fig:1000GPchroms}
+    \textbf{Load memory versus node count for chromosome graphs built from 1000 Genomes Project variants and GRCh37.}
+    For each method, memory requirements are more strongly correlated with the number of nodes in the graph ($R^2 =$ 0.998) than with the graph sequence length ($R^2 =$ 0.986).
+    Although the memory requirements are dominated by graph sequence size, node count will increase with variant density.
+    Methods generally incur an overhead for each node that is larger than the sequence length.
+    Linear scales clarify that the absolute difference in performance between \textsc{VG} and the other methods is substantial.
+    }
+\end{figure}
+
+We first evaluated the scaling performance of the various \textsc{HandleGraph} implementations relative to node count for each of the nuclear chromosomes in the 1000GP (Figure \ref{fig:1000GPchroms}).
+We find that for all methods, load memory scales almost perfectly with node count, with an average $R^2 = 0.998$.
+Due to differences in variant density among the chromosomes, the average correlation relative to sequence length is lower ($R^2 = 0.986$).
+
+\begin{table}
+  \centering
+\begin{tabular}{c||r|r|r|r|r}
+ & \multicolumn{1}{c|}{Build} & \multicolumn{1}{c|}{Load} & \multicolumn{3}{c}{Iteration rate (millions)} \\
+\multicolumn{1}{c||}{Model} & \multicolumn{1}{c|}{B/bp} & \multicolumn{1}{c|}{B/bp} & \multicolumn{1}{c|}{Node/s} & \multicolumn{1}{c|}{Edge/s} & \multicolumn{1}{c}{Step/s} \\
+\hline
+vg &   80.2 &                77.2$\ \ $  &              24.6 &                  2.8 &               2.9 \\
+hg &   36.7 &                23.9$\ \ $  &              59.5 &                 18.9 &              \textbf{127.2} \\
+og &   \textbf{30.3}  &   13.7$\ \ $  &              24.1 &                 11.5 &              8.2 \\
+pg &   37.6 &                 \textbf{3.80}  &   \textbf{63.7} &   4.6 &                24.3 \\
+xg &   54.3 &                9.31  &               54.2 &                 \textbf{20.5} & 117.0 \\
+\end{tabular}
+\caption{
+  \textbf{Performance on 1000 Genomes Project chromosome graphs.}
+  Average build memory, load memory, and iteration times for graph elements for the chromosome-level graphs built from all the variants in the 1000 Genomes Project and the GRCh37 reference genome against which the variant set was originally reported.
+  \textsc{VG} requires~$\sim$~20 times as much memory to load the graphs as \textsc{PackedGraph}, while even the most costly \texttt{libbdsg} model (\textsc{HashGraph}) requires~$\sim$~1/3 as much memory.
+  In these graphs, \textsc{ODGI} provides the lowest performance for handle iteration.
+  However, in all other metrics, \textsc{VG} performs much worse than the other models.
+}
+\label{table:1000GPchroms}
+\end{table}
+
+In Table \ref{table:1000GPchroms}, we report the average memory performance of the methods relative to graph sequence length, and also the iteration performance in terms of elements per second.
+We find that the best-performing method in terms of memory usage is \textsc{PackedGraph}, which consumes around $1/20$th the memory of \textsc{VG} per base-pair of graph in the 1000GP set.
+Moreover, it provides much better iteration performance for nodes (handles), edges, and path steps.
+\textsc{HashGraph} and \textsc{XG} have similar iteration performance, but \textsc{XG}, by virtue of its use of compressed, static data structures, requires less than half as much memory.
+\textsc{ODGI} optimized for efficient dynamic operations on graphs with higher path coverage, and in general is not as performant as other methods on this set.
+
+
+\section{Discussion}
+
+We have presented a set of simple formalisms, the \textsc{HandleGraph} abstraction, which provides a coherent interface to address and manipulate the components of a genome variation graph.
+To explore the utility of this model, we implemented data structures to encode variation graphs and matched them to this interface.
+This allowed us to directly compare these \textsc{HandleGraph} implementations on a diverse set of genome graphs obtained during our research.
+These experiments reveal that genome graphs need not pay the computational expense of the early versions of \textsc{VG}.
+The best-performing models require an order of magnitude less memory than \textsc{VG} while providing higher performance for basic graph access operation and element iteration.
+For these reasons, \textsc{VG} has transitioned to using these newer graph implementations. 
+
+The efficiency of these methods and their encapsulation within a coherent programming interface will support their reuse within a diverse set of application domains.
+Variation graphs have deep similarity with graphs used in assembly; these libraries could be used as the basis for assembly methods.
+They could also be used for genotyping and haplotype inference methods based on graphs \cite{garg2018graph}.
+
+Ongoing work is establishing large numbers of highly-contiguous whole genome assemblies for humans (\url{https://humanpangenome.org/}).
+Improvements in sequencing technology are likely to make such surveys routine.
+It is natural to consider a pangenome reference system, based on the whole genome alignments of such assemblies, as the output of these pangenome projects.
+Recent results demonstrate that many basic bioinformatic problems can be generalized to operate on such structures.
+Should these pangenome representations become common or standard, then variation graph data structures like those we have presented here will form the basis for a wide range of pangenomic methods.
+
+\chapter{Automated index coordination within VG}
 
 \part{Graph theoretic contributions}
 
-\chapter{Identifying sites of variation in a pangenome graph}
+\chapter{Identifying hierarchical sites of variation in a pangenome graph}
+
+\section{Preamble}
+
+This chapter consists of the majority of the paper ``Superbubbles, Ultrabubbles and Cacti'', which was presented at the 2017 meeting of RECOMB and subsequently published in \emph{Journal of Computational Biology}. I was not a primary author on this publication. However, I contributed in whole the sections titled \emph{Compatible Snarl Families} and \emph{Ultrabubbles and Cacti}, including both the mathematical proofs and the actual writing. This chapter includes most of the rest of the main text, as it provides motivation for the problem and introduces mathematical notation that is used in my section. These portions were primarily written by Benedict Paten. I have omitted the results section, which is not necessary to understand my contributions. I have also omitted proofs in the appendices for all theorems that I did not prove myself. 
+
+ \section{Introduction}
+
+% Define graphs:
+
+% de brujin graph - de bruijn paper, pevzner paper)
+
+% string graph - 
+
+% bidirected graph - brudno paper, paten paper
+Graphs are used extensively in biological sequence analysis, where they are often used to represent uncertainty about, or ensembles of, potential  nucleotide sequences.  Several subtypes have become especially prominent for sequence representation, in particular the De Bruijn graph \cite{deBruijn:1946va, pevzner2001eulerian}, the string graph \cite{myers2005fragment}, the breakpoint graph \cite{Pevzner:2000tx,Alekseyev:2009dp} and the bidirected graph (aka sequence graph) \cite{Edmonds:2003jq,Medvedev:2009fb}.
+
+% Mention that different subgraphs are recognised - particularly in context of de novo assembly
+ 
+% Define bubble in assembly graph (ref velvet paper)
+In the context of de novo sequence assembly several characteristic types of subgraph are recognised, in particular the \emph{bubble} \cite{Zerbino:2008bm}, a pair of paths that start and end at common source and sink nodes but are otherwise disjoint. In the context of sequence analysis, a bubble can represent a potential sequencing error or a genetic variation within a set of homologous molecules. An efficient algorithm for bubble detection was proposed by \cite{Birmele:2012eo}.
+
+% Define superbubble, discuss algorithms for detection
+A generalization of the notion of a bubble, the superbubble is a more complex subgraph type in which a set of (not necessarily disjoint) paths start and end at common source and sink nodes.  This problem was initially proposed by \cite{Onodera:2013fo}, who gave a quadratic solution.   \cite{Brankovic:2015ez} recently provided a linear time algorithm for superbubbles on directed acyclic graphs (DAGs).  This result, when paired with a previous linear time transformation of the problem of  superbubbles on directed graphs to superbubbles on DAGS \cite{Sung:2015bu}, yields a linear cost solution for computing superbubbles on digraphs. For a review of superbubbles and their use in sequence analysis see \cite{Iliopoulos:2016ej}. In this paper we generalize the idea of superbubble to the more general case of a bidirected graph, connect a slight generalization of the superbubble, which we call the ultrabubble, and show how it relates to the decomposition of the graph into 2- and 3-edge connected components.
+
+% Discuss summary of paper
+%% Cutting for brevity
+%We start by formally defining bidirected and biedged graphs and how they generalize the concept of a digraph. We then define superbubbles, snarls and ultrabubbles and show the relationship between them. We give a formal definition of a cactus graph for a biedged graph and show that its structure encodes a partial decomposition of a biedged graph into a set of nested snarls. We give a simple algorithm for determining the subset of snarls that are ultrabubbles and discuss how snarls and ultrabubbles can be used to represent genetic sites in a graph of genetic variations. We then give an empirical assessment of this structural decomposition for large variation graphs.
+
+\section{Methods}
+
+\subsection{Directed, Bidirected and Biedged Graphs}
+
+%Bidirected graph
+A \emph{bidirected graph} $D = (V_D, E_D)$ is a graph in which each endpoint of every edge has an independent orientation (denoted either “left" or “right”),  indicating if the endpoint is incident with the left or right \emph{side} of the given vertex. The sides of $D$ are therefore the set $V_D \times \{ left, right \}$, and each edge in $E_D$ is  a pair set of two sides (Fig. \ref{fig:digraphs_and_bigraphs}). We say for all $x \in V_D$, $(x, left)$ and $(x, right)$ are \emph{opposite sides}.
+
+%Digraph is special case of bidirected graph
+Any digraph is a special case of a bidirected graph in which each edge connects a left and a right side (by convention we here consider the right side to be the outgoing side and the left side the incoming side, so that the conversion from a digraph to a bidirected graph is determined; see Fig. \ref{fig:digraphs_and_bigraphs}). 
+
+%Biedged graph
+A \emph{biedged graph} is a graph with two types of edges: \emph{black edges} and \emph{grey edges}, such that each vertex is incident with at most one black edge (Fig. \ref{fig:digraphs_and_bigraphs}(C)).  
+
+For any bidirected graph $D$ there exists an equivalent biedged graph $B(D) = (V_{B(D)}, E_{B(D)})$ where:
+\begin{itemize}
+\item $V_{B(D)} = V_D \times \{ left, right \}$, the sides of $V_D$. 
+\item $E_{B(D)} = S_{B(D)} \cup E_{D}$, where $E_{D}$ are the grey edges,
+\item and $S_{B(D)} = \{ \{ (x, left), (x, right) \} | x \in V_{D} \}$ are the black edges. 
+\end{itemize}
+
+For a vertex $x \in V_{B(D)}$ we use the notation $\hat{x}$ to denote its opposite side.
+
+Clearly the bidirected and biedged representations are essentially equivalent, and the choice to use either one is largely a stylistic consideration. For the remainder of this paper we will mostly use the biedged representation. As any digraph is a special case of a bidirected graph and any bidirected graph has an equivalent biedged graph, so any digraph has an equivalent biedged graph.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.7\textwidth]{snarlfigures/fig1.pdf}
+\caption{\label{fig:digraphs_and_bigraphs} (A) A digraph.
+(B) A bidirected graph. Each node is drawn as a box and the orientation for each edge endpoint is indicated by the connection to either the left or right side of the node. The graph excluding the dotted edges is the equivalent bidirected graph for the digraph in (A); the dotted edges encode an inversion that cannot be expressed in the digraph representation. (C) A biedged graph equivalent to the bidirected graph shown in (B).}
+\end{figure}
+
+\subsection{Directed Walks on Biedged and Bidirected Graphs}
+
+%Directed walks on bidirected and biedged graphs
+A directed walk on a bidirected graph is a walk that at each visited vertex exits the opposite side to that which it enters. On a biedged graph a directed walk is equivalent to a walk that alternates between black and grey edges. A directed cycle is a closed directed walk that starts and ends either on the same side (e.g. a self-loop edge), or on opposites sides of a vertex (in which case the start and end is arbitrary due to symmetry). A bidirected or biedged graph is acyclic if it contains no directed cycles. 
+
+%Relationship of directed walks on digraphs to those on bidirected and biedged graphs
+These definitions are a generalization of a directed walk on a digraph. In a bidirected representation of a digraph all edges in a directed walk are all left-to-right or all right-to-left. A directed walk on a general bidirected (or biedged) graph can mix these two types and additionally include edges that do not alternate the orientation of their endpoints (e.g. left-right, right-right and left-left edges). 
+
+Given these generalizing relationships, clearly a digraph $\textbf{D}$ is acyclic iff $B(\textbf{D})$ is acyclic. Note that any acyclic biedged graph can also be converted into an equivalent directed acyclic graph (DAG):
+
+\begin{lemma}
+For any acyclic biedged graph $B(D)$ there exists an isomorphic biedged graph $B(\textbf{D})$ such that $\textbf{D}$ is a DAG.
+\label{lemma_acyclic_biedged_graph_is_dag}
+\end{lemma}
+\begin{proof}
+For each connnected component in $B(D)$, use a depth first search (DFS) beginning at side $x$ to label the sides either `red' or `white':  If $x$ is not already labelled then label $x$ red and $\hat{x}$ white. For each grey edge incident with $\hat{x}$, if the connected side is not labeled, label the connected side red and continue recursively via DFS. In this way all the sides in the connected component containing $x$ will be labeled in a single DFS. If during the recursion the connected side encountered is already labelled then it must be labeled red, else there would exist a directed cycle, a contradiction. Use the labelling to create $B(\textbf{D})$, isomorphic to $B(D)$  but replacing the orientation of the sides so that each side labeled white is a left side and each side labeled red is a right side. All edges in $B(\textbf{D})$ connect a left and a right side.
+\end{proof}
+
+\subsection{Superbubbles, Snarls and Ultrabubbles}
+
+%superbubbles
+
+Repeating the definition from \cite{Onodera:2013fo}, any pair of distinct vertices $(x, y)$ in a digraph $\textbf{D}$ is called a \emph{superbubble} (Fig. \ref{fig:super_bubbles_and_complex_bubbles}(A)) if:
+\begin{itemize}
+\item \emph{reachability}: $y$ is reachable from $x$.
+\item \emph{matching}: The set of vertices, $X$, reachable from $x$ without passing through $y$ is equal to the set of vertices from which $y$ is reachable without passing through $x$ (passing through here means to enter and then exit a vertex on the path). 
+\item \emph{acyclicity}: The subgraph induced by $X$ is acyclic.
+\item \emph{minimality}: No vertex in $X$ other than $y$ forms a pair with $x$ that satisfies the criteria defined above, and similarly for $y$.
+\end{itemize}
+
+We call the subgraph induced by $X$ the \emph{superbubble subgraph}.
+
+% Snarls
+
+To generalize superbubbles for biedged graphs we introduce the notion of a snarl, a minimal subgraph in a biedged graph whose vertices are at most 2-black-edge-connected (2-BEC) to the remainder of the graph (two vertices in a biedged graph are $k$-black-edge-connected ($k$-BEC) if it takes the deletion of at least $k$ black edges to disconnect them). In a biedged graph $B(D)$ a pair set of distinct, non-opposite vertices $\{ x, y \}$ are a \emph{snarl} (Fig. \ref{fig:super_bubbles_and_complex_bubbles}(B)) if:
+\begin{itemize}
+\item \emph{seperable}: The removal of the black edges incident with $x$ and $y$ disconnects the graph, creating a \emph{separated component} $X$ containing $x$ and $y$ and not $\hat{x}$ and $\hat{y}$.
+\item \emph{minimality}: No pair of opposites $\{ z, \hat{z} \}$ in $X$ exists such that $\{ x, z \}$ and $\{ y, \hat{z} \}$ fulfils the above criteria.
+\end{itemize}
+
+% Ultrabubbles
+
+We call a vertex not incident with a grey edge a \emph{tip} \cite{Zerbino:2008bm}. In a biedged graph $B(D)$ a snarl is an \emph{ultrabubble} if its separated component is acyclic and contains no tips.
+
+The following shows that a superbubble in a digraph is an ultrabubble in the equivalent biedged graph.
+
+\begin{lemma}
+For any superbubble $(x, y)$ in a digraph $\textbf{D}$, the pair set $\{ x'=(x, right), y'=(y, left) \}$ is an ultrabubble in $B(\textbf{D})$.
+\label{lemma_super_bubble_is_ultra_bubble}
+\end{lemma}
+\begin{proof}
+Let $d$ and $e$ be the black edges incident with $x'$ and $y'$, respectively, and let $X$ be the superbubble subgraph of $(x, y)$.
+
+We start by proving that $\{ x', y' \}$ satisfies the separable criteria. 
+As $y$ is reachable from $x$ by definition there exists a directed path in $B(\textbf{D})$ between $x'$ (the right side of $x$) and $y'$ (the left side of $y$) that excludes $d$ and $e$. After the deletion of these black edges $x'$ and $y'$ therefore remain connected.
+If the separable criteria is not satisfied the deletion of $d$ and $e$ must therefore not disconnect $x'$ and $y'$ from either or both $\hat{x'}$ and $\hat{y'}$, without loss of generality assume $x'$ (and therefore $y'$) remains connected to $\hat{x'}$. 
+
+If $\hat{x'}$ is on a directed walk from $x'$ that excludes $d$ then the addition of $d$ to this walk defines a directed cycle in $B(\textbf{D})$. As all nodes reachable from $x$ are in the separated component $X$, the existence of this cycle in $B(\textbf{D})$ implies the existence of a corresponding directed cycle in $X$, a contradiction.
+
+If there exists a non-directed walk from $x'$ to $\hat{x'}$ then let $z'$ be the last node on the walk from $x'$ such that the subwalk between $x'$ and $z'$ is a directed walk. By definition, there exists directed walk from $z'$ to $y'$. The next node on the walk from $x'$ to $\hat{x'}$ after $z'$ is, by definition, not reachable from $x'$ but $y'$ must be reachable from this node. This implies a contradiction of the matching criteria for the corresponding nodes in $X$.
+
+We have therefore established that $\{ x', y' \}$ fufills the seperable criteria. We have already established that iff a digraph is acyclic its equivalent biedged graph is acyclic, therefore the seperated component of $\{ x', y' \}$ is acyclic. As every node in $X$ is both reachable from $x$ and on a path from $y$, the separated component clearly contains no tips. 
+
+It remains to prove that $\{ x', y' \}$ fufills the minimality criteria. If $\{ x', y' \}$ do not satisfy the minimality criteria without loss of generality there exists a node $z'$ in the separated component of $\{x', y'\}$ such that $\{x', z' \}$ are separable. It follows that all directed paths from $x'$ to $y'$ that exclude $d$ and $e$ visit $z'$, and for the node $z$ in $\textbf{D}$ contained in $z'$, $(x, z)$ fulfills (clearly) all the superbubble criteria, a contradiction.
+
+\end{proof}
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]{snarlfigures/fig2.pdf}
+\caption{\label{fig:super_bubbles_and_complex_bubbles} (A) Superbubbles in a digraph. The superbubbles are indicated by pairs of numbered arrows, numbered consistently with (B). (B) 
+A biedged graph representation of the digraph in (A). The snarls are illustrated by numbered arrows, the ultrabubbles are those numbered 1, 4, 9 and 12. Note, a side incident with a black bridge edge may be in multiple snarls (see snarls numbered 10).}
+\end{figure}
+
+%Complex ultrabubbles
+
+\subsection{Cactus Graphs}
+
+%Cactus graph
+A cactus graph is a graph in which any two vertices are at most two-edge connected \cite{Harary:1953vba}. In a cactus graph each edge is part of at most one simple cycle, and therefore any two simple cycles intersect at most one vertex. 
+
+%Define vertex merging
+For a graph $G = (V_G, E_G)$ let $G' = (V_{G'}, E_{G'})$ be a multigraph created by \emph{merging} subsets of the vertices, such that:
+\begin{itemize}
+\item$V_{G'}$ is a partition of $V_{G}$,
+\item $E_{G'} = \{ \{ a_{G'}(x), a_{G'}(y) \} | \{x, y\} \in E_G \}$ is a multiset.
+\end{itemize}
+where $a_{G'} : V_G \rightarrow V_{G'}$ is a graph homomorphism that maps each vertex in $V_{G}$ to the set in $V_{G'}$ that contains it. 
+
+%Linking biedged graphs and cactus graphs
+Merging all equivalence classes of 3-edge connected (3-EC) vertices in a graph results in a cactus graph \cite{Paten:2011fv}. 
+
+For a  biedged graph $B(D)$ let $C(D)$ be the cactus graph created by first contracting all the grey edges in $B(D)$ then for each equivalence class of 3-EC vertices in the resulting graph merging together the vertices within the equivalence class (Fig. \ref{fig:biedged_graphs_and_cactus_graphs}(A-C)). As with $G'$ and $G$, $V_{C(D)}$ is a partition of the vertices of $V_{B(D)}$, and $E_{C(D)} = \{ \{ a_{C(D)}(x), a_{C(D)}(y) \} | \{x, y\} \in E_{B(D)} \}$ is a multiset. 
+
+%Notation 
+For a vertex $x \in V_{B(D)}$ we call $a_{C(D)}(x)$ its \emph{projection} (in $C(D)$). Similarly for a set of vertices $X \subset V_{B(D)}$ we call $\{ a_{C(D)}(x) | x \in X \}$ the projection of $X$ (in $C(D)$). Let $b_{C(D)}(x) = \{ a_{C(D)}(x), a_{C(D)}(\hat{x}) \}$, which is the projection of the black edge incident with $x$ in $C(D)$.
+
+%Linking B(D) and C(D)
+Appendix 1 gives lemmas that make explicit the relationship between the edge connectivity of vertices in $B(D)$ and $C(D)$, and which we use to prove the relationship between the snarls of $B(D)$ and $C(D)$. 
+
+\begin{figure}
+\centering
+\includegraphics[width=0.9\textwidth]{snarlfigures/fig3.pdf}
+\caption{\label{fig:biedged_graphs_and_cactus_graphs} (A) A biedged graph $B(D)$ with the snarls indicated by pairs of numbered arrows. (B) The graph in (A) after contracting the grey edges. (C) The cactus graph $C(D)$ for $B(D)$, constructed by merging the vertices in each 3-EC in (B). (D) The bridge forest $D(D)$, constructed by constracting the edges in simple cycles in (C). }
+%(E) A net graph for the number 4 bridge pair in (A). The projection of chain pairs in $B(D)$ to the other graphs is shown using the numbered arrows, with the arrows drawn along the projecting black edge incident with the projected vertex.}
+\end{figure}
+
+\subsection{Snarls and Cacti}
+
+%Chain pair and cyclic chains
+A pair set of distinct vertices $\{ x, y \}$ in $B(D)$ are a \emph{chain pair} if they project to the same vertex in $C(D)$ and their incident black edges project to the same simple cycle in $C(D)$ (e.g. pairs of arrows in simple cycles  in Fig. \ref{fig:biedged_graphs_and_cactus_graphs}(C)). A cyclic sequence of chain pairs within the same simple cycle in $C(D)$ and ordered according to the ordering of this simple cycle is a \emph{(cyclic) chain}. Contiguous chain pairs in a chain share two opposite sides of a black edge in $B(D)$.
+
+%Bridge forest
+For a cactus graph $C(D)$, the graph $D(D)$ resulting from contracting all the edges in simple cycles in $C(D)$ is a called a \emph{bridge forest} (Fig. \ref{fig:biedged_graphs_and_cactus_graphs}(D)).
+
+%Bridge pair and acyclic chains
+A pair set of distinct vertices $\{ x, y \}$ in $B(D)$ are a \emph{bridge pair} if they project to the same vertex in $D(D)$  and both their incident black edges are bridges (e.g. pairs of arrows numbered 1 and 2 in Fig. \ref{fig:biedged_graphs_and_cactus_graphs}(D)). A maximum sequence of bridge pairs within $D(D)$ connected by incident nodes with degree two is an \emph{(acyclic) chain}. As with chain pairs, contiguous bridge pairs in a chain share two opposite sides of a black (bridge) edge in $B(D)$.
+
+
+\begin{theorem}
+The set of snarls in $B(D)$ is equal to the union of chain pairs and bridge pairs.
+\label{theorem_chain_and_bridge_pair_bijection_complex_bubbles}
+\end{theorem}
+\begin{proof}
+Follows from Lemmas 10 and 11 given in Appendix 2.
+\end{proof}
+
+Given Theorem \ref{theorem_chain_and_bridge_pair_bijection_complex_bubbles} to calculate the set of snarls for a given biedged graph it is sufficient to calculate the cactus graph to give the set of snarls that map to chain pairs and the bridge forest to calculate the set of snarls that map to bridge pairs. Constructing a cactus graph of the type described for a biedged graph is linear in the size of the biedged graph (using the algorithm described in \cite{Paten:2011fv}), and clearly the cost of then calculating the bridge forest from the cactus graph is similarly linear. The number of chain pairs is clearly linear in the size of the biedged graph, however, the number of bridge pairs is potentially quadratic in the number of bridge pairs, so enumerating these latter snarls has potentially worst case quadratic cost in terms of the size of the biedged graph. Below we consider ways to prune the set of snarls by using their natural nesting relationships to create a hierarchy of snarls that is at most linear in the size of the biedged graph. 
+
+\subsection{Compatible Snarl Families}
+
+One particularly attractive feature of superbubbles is that they have nested containment relationships. That is, superbubbles have subgraphs that are either strictly nested or disjoint. Accordingly, a digraph is partitioned into a set of top level superbubble subgraphs and other graph members not contained in a superbubble subgraph, and each top level superbubble component then contains one or more child superbubbles, forming a tree structure. The situation is more complex for snarls. The separated component of snarls can overlap (Fig. \ref{fig:overlapping_snarls}) such that each partially contains the other. To create a properly nested hierarchy of snarls it is therefore necessary to exclude some snarls.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.4\textwidth]{snarlfigures/fig4.pdf}
+\caption{\label{fig:overlapping_snarls} Overlapping snarls. (A) A bidirected graph, its corresponding (B) cactus graph. The snarl numbered 2 contains the snarl numbered 4, similarly the snarl numbered 3 contains the snarl numbered 1. The snarls numbered 2 and 3 overlap.}
+\end{figure}
+
+We will call a family of snarls \textit{compatible} if all pairs of distinct snarls in the family have snarl subgraphs that are either disjoint or nested. A compatible family of snarls has a nesting structure that is a forest, similar to superbubbles. The following theorem provides a sufficient condition for constructing such a family in many bidirected graphs.
+
+\begin{theorem}
+	In a connected biedged graph with at least one black bridge edge, the family of snarls whose subgraphs have no black bridge edges is compatible.
+	\label{theorem_no_bridges_is_compatible}
+\end{theorem}
+
+\noindent In addition, the next theorem shows that this family of snarls is a generalization of ultrabubbles.
+
+\begin{theorem}
+	No ultrabubble contains a black bridge edge in its subgraph.
+	\label{theorem_ultrabubbles_have_no_bridges}
+\end{theorem}
+
+\noindent Proofs of these theorems are included in Appendix 3.	
+
+The bridge edge condition can also be used to construct a compatible family of snarls in a graph with no black bridge edges. To do so, we break one black edge into two tips. Each of these tips is then a bridge edge, so the family of snarls we construct from the modified graph is compatible. However, the family of snarls we obtain will depend on our choice of a black edge to break.  Heuristically, an edge corresponding to a highly conserved genomic element should be chosen, since by construction it will not occur in any snarl's subgraph.
+
+Given a snarl decomposition, the following algorithm will filter them down to the compatible family we have described:
+
+\begin{itemize}
+	\item Iterate over the black bridge edges of the graph (i.e. the edges of $D(D)$)
+	\item For a bridge edge $(u, \hat u)$, if either $u$ or $\hat u$ is the boundary of a snarl, mark that snarl as not containing $(u, \hat u)$.
+	\item Initialize a queue with $u$ and $\hat u$, and traverse outward in breadth-first order, ignoring restrictions on directed biedged walks. 
+	\item Upon reaching a node $x$ that is a boundary for a snarl $\{x,y\}$, if neither $y$, $\hat x$, nor $\hat y$ have been traversed, mark the snarl as containing $(u, \hat u)$.
+ 	\item Upon reaching a node $\hat x$ whose opposite is boundary for a snarl $\{x,y\}$, if neither $\hat y$, $x$, nor $y$ has been traversed, mark the snarl as not containing $(u, \hat u)$.
+ 	\item After completing every traversal, retain only snarls that were never marked as containing a black bridge edge.
+\end{itemize}
+
+The validity of this algorithm is proven by Lemma \ref{lemma_shortest_path_determines_subgraph_membership}. Naively, this algorithm requires $O(|E_{B(D)}|(|V_{B(D)}| + |E_{B(D)}|))$ time for the traversals, and $O(|V_{B(D)}|^2)$ to mark all snarls. However, we can implement optimizations that improve on this behavior. First, we can also stop the BFS traversals whenever they encounter a bridge edge. Lemmas \ref{lemma_snarls_across_bridges_are_redundant} and \ref{lemma_snarl_on_bridge_is_in_one_component} demonstrate that the portion of the BFS traversal after a bridge edge is redundant. This reduces the time required for the traversal to $O(M(|V_{B(D)}| + |E_{B(D)}|))$, where $M = \max_{v \in V_{D(D)}} \deg v$. In general, $M = O(|E_{B(D)}|)$, so this does not improve over the worst case asymptotic bound. However, in many practical cases $M$ is approximately constant. 
+
+ We can also reduce the total number of snarls we need to filter by neglecting to produce some snarls a priori. The quadratic bound on the number snarls is due to the fact that there is a bridge pair for all pairs of edges incident on a  node in $D(D)$. However, Lemma \ref{lemma_shared_boundary_implies_bridge_edge} shows that none of these bridge pairs will pass the filter. Accordingly, we can reduce the set of snarls we consider to only chain pairs and bridge pairs that project to nodes of degree 2 in $D(D)$, which we call \emph{simple} bridge pairs. This reduces the total number of snarls to $O(|V_{B(D)}|)$.
+
+\subsection{Ultrabubbles and Cacti}
+
+% Testing acyclicity using the cactus
+
+Given Theorem \ref{theorem_chain_and_bridge_pair_bijection_complex_bubbles}, to determine the ultrabubbles in $B(D)$ it is sufficient to check for each chain and bridge pair if the separated component is acyclic and contains no tips. 
+
+Using Theorem \ref{theorem_ultrabubbles_have_no_bridges} we can restrict the search to snarls whose separated component does not contain a black bridge edge. This implies that we need only consider bridge pairs whose projection in $D(D)$ is a node whose degree is two, we call such bridge pairs \emph{simple}. The number of simple bridge pairs must be less than the cardinality of $D(D)$, and therefore the total number of chain pairs and simple bridge pairs is less than or equal to $|E_{B(D)}|$.  Using $D(D)$ and $C(D)$, which both can be constructed in $O(|E_{B(D)}| + |V_{B(D)}|)$ time, we can clearly enumerate the set of simple chain pairs and bridge pairs in $O(|E_{B(D)}| + |V_{B(D)}|)$ time. 
+
+A simple algorithm to find the set of ultrabubbles enumerates all chain pairs and simple bridge pairs and checks for each the acyclicity and tipless requirement using a depth first search, and is therefore worst case $O((|E_{B(D)}| + |V_{B(D)}|)^2)$ time.
+
+\section{Discussion and Conclusion}
+
+% Discuss open question - how to classify snarls that are not ultrabubbles. 
+
+We have presented a partial decomposition of a bidirected graph into a set of nested snarls and ultrabubbles. We believe this solves an important problem in using graphs for representing arbitrary genetic variations by defining a decomposition that determines sites and alleles. 
+
+As the decomposition is only partial, not all elements in a graph will necessarily fit into one of the ultrabubbles. However, we demonstrate that for an existing large library of variation (1000 Genomes) the large majority of sites are either invariant or described by simple, top-level ultrabubbles. 
+
+For bases outside of these easy sites it is possible to imagine further subclassification. For example, classifying snarls that contain tips but are acyclic might define a useful class of subgraph common in some subproblems (e.g. sequence assembly). Some structures representing dense or overlapping collections of sequence polymorphisms, insertions and deletions cannot be fully described using nested ultrabubbles. We have previously shown that a generalization of the separability criterion for ultrabubbles can describe sites in these cases. \cite{Rosen2017}. Similarly, characteristic structures representing genomic phenomena, such as inversions and translocations, are imaginable. Beyond our initial investigation, a more thorough evaluation of how much of a graph fits within a snarl, ultrabubble, or one of these more complex structures would be a useful exercise. We propose that the compatible family of snarls we constructed provides one path forward in this endeavor.
+
+% Discuss strategy to heuristically make ultrabubbles
+
+We can also envision that the nesting structure of snarls could play a powerful role in decomposing genotyping problems. Nested graph structures often arise from nested indels and substitutions. 
+%This perspective reframes the genotyping problem as the problem of establishing a consistent traversal of each snarl's net graph.
+
+%\begin{figure}}
+%\centering
+%\includegraphics[width=1.0\textwidth]{fig5.pdf}
+%\caption{\label{fig:nested_ultra_bubbles} (A) A biedged graph $B(D)$ with nested ultrabubbles indicated by pairs of numbered arrows. (B) $C(D)$ for $B(D)$. (C) $T(D)$ for $B(D)$. (D-H) The net graphs for the ultrabubbles in $B(D)$.}
+%\end{figure}
+
+In the context of assembly, various error correction algorithms have been proposed to remove graph elements and reduce the complexity of the graph. This increases the fraction of the graph that is contained within an ultrabubble structure. We foresee the cactus graph structure providing a useful basis for exploring such algorithms. 
+
+\section{Acknowledgements}
+
+This work was supported by the National Human Genome Research Institute of the National Institutes of Health under
+Award Number 5U54HG007990 and grants from the W.M. Keck foundation and the Simons Foundation. This work benefitted from numerous conversations with David Haussler and Daniel Zerbino.
 
 \chapter{Walk-preserving transformation of overlapped sequence graphs into blunt sequence graphs}
 
 \section{Preamble}
 
-This chapter consists of the full text of a paper ``Walk-preserving transformation of overlapped sequence graphs into blunt sequence graphs with GetBlunted'', which will be presented at the 2021 meeting of Computability in Europe. I share primary authorship for this paper with Ryan Lorig-Roach. I am responsible for designing and partially implementing the algorithms. Ryan Lorig-Roach also partially implemented the algorithm, and Melissa M. Meredith performed the experimental comparison to comparable algorithms.
+This chapter consists of the full text of a paper ``Walk-preserving transformation of overlapped sequence graphs into blunt sequence graphs with GetBlunted'', which will be presented at the 2021 meeting of Computability in Europe. I share primary authorship for this paper with Ryan Lorig-Roach. I am responsible for designing and partially implementing the algorithms, as well as writing the majority of the paper. Ryan Lorig-Roach also partially implemented the algorithm, and Melissa M. Meredith performed the experimental comparison to comparable algorithms.
 
 \section{Introduction}
 
@@ -1513,6 +2240,174 @@ The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified v
 \label{alg:multiple-traceback}
 \end{algorithm}
 
+\chapter{Appendix B: Proofs of theorems regarding snarl compatibility}
+
+\section{Appendix 1 and 2 of \emph{Superbubbles, Ultrabubbles, and Cacti}}
+
+Omitted. I did not contribute to the proofs in these appendices.
+
+\section{Appendix 3 of \emph{Supperbubbles, Ultrabubbles, and Cacti}}
+
+\setcounter{lemma}{9} 
+
+In this section, we prove Theorems \ref{theorem_no_bridges_is_compatible} and \ref{theorem_ultrabubbles_have_no_bridges}, which characterize a sufficient condition to produce a family of compatible snarls. We begin with two useful lemmas.
+
+\begin{lemma}
+	Let $\{x, y\}$ be a snarl with snarl subgraph $X$. If $u$ is a node in $X$ and $v$ is a node that is not in $X$, then any path from $u$ to $v$ includes the black edge incident on $x$ or the black edge incident on $y$.
+	\label{lemma_snarl_path_inside_to_outside}
+\end{lemma}
+\begin{proof}
+	Suppose a path exists that does not include either of the black edges incident on $x$ and on $y$. Then $u$ is not disconnected from $v$ after deleting these edges, which contradicts the separability of $\{x, y\}$.
+\end{proof}
+
+\begin{lemma}
+	Let $\{x,y\}$ be a snarl with subgraph $X$. Then there exists a path from $u$ to either $x$ or $y$ that includes neither the black edge incident on $x$ nor the black edge incident on $y$ iff $u$ is in $X$.
+	\label{lemma_snarl_path_completely_inside}
+\end{lemma}
+\begin{proof}
+	 First assume $u$ is in $X$. Some path exists from $u$ to either $x$ or $y$, else $u$ is not in the same connected component as $x$ and $y$. Consider the shortest such path. Without loss of generality, assume this path is between $u$ and $x$. Suppose the black edge incident on $x$ or the black edge incident on $y$ occurs somewhere along the path. Without loss of generality, assume it is the black edge incident on $x$. By Lemma 1, $x$ or $y$ must occur in the prefix of the path between $u$ and $\hat x$. This implies that the path was not the shortest, which is a contradiction. Therefore, there exists a path from $u$ that contains neither the black edge incident on $x$ nor the black edge incident on $y$.
+	
+	Next assume without loss of generality that a path exists from $u$ to $x$ that includes neither the black edge incident on $x$ nor the black edge incident on $y$. This path is preserved after removing these two edges. This implies that $u$ is in the same connected component as $x$ (and hence also $y$) in the resulting graph, so $u$ is in $X$.
+\end{proof}
+
+Let $\{x_1, y_1\}$ and $\{x_2, y_2\}$ be two snarls with snarl subgraphs $X_1$ and $X_2$ respectively. We will say that $\{x_1, y_1\}$ \textit{splits} $\{x_2, y_2\}$ if either a) $x_2$ is in $X_1$ but $y_2$ is not in $X_1$, or b) $y_2$ is in $X_1$ but $x_2$ is not in $X_1$. This condition clearly violates compatibility.
+
+\begin{lemma}
+	Let $\{x_1, y_1\}$ and $\{x_2, y_2\}$ be snarls with snarl subgraphs $X_1$ and $X_2$. If $\{x_1, y_1\}$ splits $\{x_2, y_2\}$, then $x_1$ and $y_1$ are in $X_2$.
+	\label{lemma_splits_implies_contained}
+\end{lemma}
+\begin{proof}
+	We will proceed by showing that all other cases lead to contradictions. Without loss of generality, assume $x_2$ is in $X_1$ and $y_2$ is not in $X_1$.
+	
+	\noindent \textit{Case I}: $x_1$ and $y_1$ are not in $X_2$
+	
+	Consider the set of paths from $x_2$ to $y_2$ that do not pass through $\hat y_2$ or $\hat x_2$. This set is nonempty else $X_2$ is disconnected. By Lemma \ref{lemma_snarl_path_inside_to_outside}, any such path must include $x_1$ or $y_1$, which would imply that $x_1$ is in $X_2$ or $y_1$ is in $X_2$ respectively by Lemma \ref{lemma_snarl_path_completely_inside}. This violates the assumption of the case, so this case is contradictory.
+		
+	\noindent \textit{Case II}: $x_1$ is in $X_2$ and $y_1$ is not in $X_2$
+	
+	Any path from $x_1$ to $y_1$ that does not include the black edges incident on $x$ and $y$ cannot include $y_2$, else $y_2$ is in $X_1$ by Lemma \ref{lemma_snarl_path_completely_inside}. Therefore, it must contain the black edge incident on $x_2$ by Lemma \ref{lemma_snarl_path_inside_to_outside}. Without loss of generality, this implies that $\{x_1, x_2\}$ and $\{\hat x_2, y_1\}$  are separable, which violates the minimality of $\{x_1, y_1\}$. Thus, this case is contradictory as well.`
+	
+	\noindent \textit{Case III}: $y_1$ is in $X_2$ and $x_1$ is not in $X_2$
+	
+	Same as Case II.
+	
+	\noindent This proves the lemma.
+\end{proof}
+
+\begin{lemma}
+	Let $\{x_1, y_1\}$ and $\{x_2, y_2\}$ be snarls with snarl subgraphs $X_1$ and $X_2$. If $\{x_1, y_1\}$ splits $\{x_2, y_2\}$, then $X_1$ contains a black bridge edge.
+	\label{lemma_splits_implies_bridge_edge}
+\end{lemma}
+\begin{proof}
+	Without loss of generality, assume $x_2$ is in $X_1$ and $y_2$ is not in $X_1$. Then there exists at least one path from $\hat x_2$ to either $x_1$ or $y_1$ else $X_1$ is disconnected. By Lemma \ref{lemma_splits_implies_contained}, $x_1$ and $y_1$ are in $X_2$, so all such paths must include the black edge incident on $x_2$ or the black edge incident on $y_2$ by Lemma \ref{lemma_snarl_path_inside_to_outside}. Since $y_2$ is not in $X_1$, all paths from $x_1$ or $y_1$ to $\hat x_2$ in $X_1$ must include the black edge incident on $x_2$. Therefore, the black edge incident on $x_2$ is a bridge edge by Menger's Theorem.
+\end{proof}
+
+There are also cases that violate compatibility without splitting a snarl. The following lemmas characterize these cases.
+
+\begin{lemma}
+	Let $\{x_1,y_1\}$ and $\{x_2,y_2\}$ be snarls with distinct boundaries in a connected graph $B(D)$ whose snarl subgraphs are $X_1$ and $X_2$. If $x_1$ and $y_1$ are in $X_2$, and $x_2$ and $y_2$ are in $X_1$, then $X_1 \cup X_2 = B(D)$.
+	\label{lemma_reciprocal_contain_implies_entire_graph}
+\end{lemma}
+\begin{proof}
+	Let $u$ be an arbitrary node that is not in $X_1$ be arbitrary. There exists at least one path from $u$ to a node in $X_1$ else $B(D)$ is not connected. Let $p_1$ be the shortest such path. Clearly, no node from $X_1$ occurs in $p_1$ except at its terminus. In particular, $p_1$ does not contain either $\hat x_2$ or $\hat y_2$. By Lemma \ref{lemma_snarl_path_inside_to_outside}, $p_1$ includes $x_1$ or $y_1$, so one of these must be the terminal node. Without loss of generality, assume it is $x_1$. Since $x_1$ is in $X_2$, there also exists a path $p_2$ from $\hat x_1$ to either $x_2$ or $y_2$ that does not include $\hat x_2$ or $\hat y_2$ by Lemma \ref{lemma_snarl_path_completely_inside}. Note that $p_1p_2$ is a path from $u$ to either $x_2$ or $y_2$ that does not include the black edges incident on $x_2$ and $y_2$. Thus, $u$ is in $X_2$ by Lemma \ref{lemma_snarl_path_completely_inside}. This implies $X_1 \cup X_2 = B(D)$.
+\end{proof}
+
+\begin{lemma}
+	Let $\{x, y_1\}$ and $\{x, y_2\}$ be snarls with snarl subgraphs $X_1$ and $X_2$. If $y_1 \neq y_2$, then $X_1$ and $X_2$ both contain a black bridge edge.
+	\label{lemma_shared_boundary_implies_bridge_edge}
+\end{lemma}
+\begin{proof}
+	Suppose $y_2$ is not in $X_1$. Then all paths from $y_2$ to $x$ must include the black edge incident on $x$ or the black edge incident on $y_1$ by Lemma \ref{lemma_snarl_path_inside_to_outside}. There exists at least one path between $x$ and $y_2$ in $X_2$, which cannot include the black edge incident on $x$. Therefore, all paths between $y_2$ and $x$ must include the black edge incident on $y_1$. This implies without loss of generality that $\{x, y_2\}$ and $\{\hat y_2, y_1\}$ are separable, which violates the minimality of $\{x, y_1\}$. Thus, $y_2$ is in $X_1$. Note that the black edge incident on $x$ is not in $X_1$. Therefore, removing the black edge incident on $y_2$ from $X_1$ disconnects $x$ from $\hat y_2$ because of the separability of $\{x, y_2\}$. Thus, the black edge incident on $y_2$ is a bridge edge in $X_1$. Similarly, the black edge incident on $y_1$ is a bridge edge in $X_2$.
+\end{proof}
+
+Finally, we establish the relationship between pairs of snarls that allow for compatibility.
+
+\begin{lemma}
+	Let $\{x_1, y_1\}$ and $\{x_2, y_2\}$ be snarls with snarl subgraphs $X_1$ and $X_2$. If both $x_2$ and $y_2$ are in $X_1$, and both $x_1$ and $y_1$ are not in $X_2$, then $X_2 \subset X_1$.
+	\label{lemma_nested_boundaries_implies_nested_snarls}
+\end{lemma}
+\begin{proof}
+	Let $u$ be an arbitrary node in $X_2$. There exists a path $p_1$ from $u$ to $x_1$ or $y_1$ that consists of only nodes in $X_2$ else $X_2$ is not connected. In particular, $\hat x_1, \hat y_1 \notin p_1$ else $x_1$ or $y_1$ would be in $X_2$. There also exists a path $p_2$ from $x_2$ to $x_1$ that includes neither $\hat x_1$ nor $\hat y_1$ by Lemma \ref{lemma_snarl_path_completely_inside}. The path $p_1p_2$ connects $u$ to $x_1$ and includes neither $\hat x_1$ nor $\hat y_1$. Thus, $u$ is in $X_1$ by Lemma \ref{lemma_snarl_path_completely_inside}.
+\end{proof}
+
+\begin{lemma}
+	Let $\{x_1, y_1\}$ and $\{x_2, y_2\}$ be snarls with snarl subgraphs $X_1$ and $X_2$. If $x_2$ and $y_2$ are not in $X_1$, and $x_1$ and $y_1$ are not in $X_2$, then $X_1$ and $X_2$ are disjoint.
+	\label{lemma_disjoint_boundaries_implies_disjoint}
+\end{lemma}
+\begin{proof}
+	Let $u$ be an arbitrary node in $X_1$, and let $p$ be any path from $u$ to $x_2$ or $y_2$. By Lemma \ref{lemma_snarl_path_inside_to_outside}, $p$ includes $x_1$ or $y_1$. Thus, by Lemma \ref{lemma_snarl_path_inside_to_outside}, $p$ includes $\hat x_2$ or $\hat y_2$. Since $p$ was chosen arbitrarily, this implies $u$ is not in $X_2$ by Lemma \ref{lemma_snarl_path_completely_inside}. Therefore, $X_1$ and $X_2$ are disjoint.
+\end{proof}
+
+Taken together, these results yield the sufficient condition for compatibility that we set out to prove.
+{
+\renewcommand{\thetheorem}{\ref{theorem_no_bridges_is_compatible}}
+\begin{theorem}
+	In a connected biedged graph with at least one black bridge edge, the family of snarls whose subgraphs have no black bridge edges is compatible.
+\end{theorem}
+}
+\begin{proof}
+	Let $\{x_1, y_1\}$ and $\{x_2, y_2\}$ be arbitrary snarls with snarl subgraphs $X_1$ and $X_2$ such that neither subgraph contains a black bridge edge. By Lemma \ref{lemma_splits_implies_bridge_edge}, neither snarl splits the other. By Lemma \ref{lemma_shared_boundary_implies_bridge_edge}, the two snarls cannot share a boundary node. Therefore, we also cannot have both $x_1$ and $y_1$ in $X_2$, and $x_2$ and $y_2$ in $X_1$ else either $X_1$ or $X_2$ must contain the graph's black bridge edge by Lemma \ref{lemma_reciprocal_contain_implies_entire_graph}. This leaves three cases: 
+	
+	\begin{enumerate}
+		\item $x_1$ and $y_1$ are in $X_2$, and $x_2$ and $y_2$ are not in $X_1$
+		\item $x_1$ and $y_1$ are not in $X_2$, and $x_2$ and $y_2$ are in $X_1$
+		\item $x_1$ and $y_1$ are not in $X_2$, and $x_2$ and $y_2$ are not in $X_1$
+	\end{enumerate} 
+	
+	In the first two cases, one subgraph is nested in the other by Lemma \ref{lemma_nested_boundaries_implies_nested_snarls}. In last case, the subgraphs are disjoint by Lemma \ref{lemma_disjoint_boundaries_implies_disjoint}. Therefore, $\{x_1, y_1\}$ and $\{x_2, y_2\}$ are compatible.
+\end{proof}
+
+We will now move on to proving that ultrabubbles are included in the family of snarls with no black bridge edges.
+
+\begin{lemma}
+	Let $u$ be a terminal of a black bridge edge whose removal separates a graph $B(D)$ into connected components $B_1$ and $B_2$ with $u$ in $B_1$ and $\hat u$ in $B_2$. Then all snarls $\{x,y\}$ have either both $x$ and $y$ in $B_1$ or both $x$ and $y$ in $B_2$.
+	\label{lemma_snarls_have_boundaries_on_one_side_of_bridge}
+\end{lemma}
+\begin{proof}
+	Suppose without loss of generality that $x$ is in $B_1$ and $y$ is in $B_2$. All paths between $x$ and $y$ include the black edge incident on $u$. Therefore, $\{x, u\}$ and $\{\hat u, y\}$ are separable. This contradicts the minimality of $\{x, y\}$.
+\end{proof}
+{
+\renewcommand{\thetheorem}{\ref{theorem_ultrabubbles_have_no_bridges}}
+\begin{theorem}
+	No ultrabubble contains a black bridge edge in its subgraph.
+\end{theorem}
+}
+\begin{proof}
+	Let $\{x, y\}$ be an ultrabubble with subgraph $X$. Suppose $X$ contains a black bridge edge with terminals $u$ and $\hat u$. Removing this edge separates $X$ into connected components $X_1$ and $X_2$ with $u$ in $X_1$ and $\hat u$ in $X_2$. By Lemma \ref{lemma_snarls_have_boundaries_on_one_side_of_bridge}, we may assume without loss of generality that $x$ and $y$  are in $X_1$. 
+	
+	Since $X_2 \subset X$, there are no cyclic walks in $X_2$. Moreover, there is at least one edge in $X_2$ else the black bridge edge is a tip. Let $w$ be the longest biedged walk starting from $\hat u$ in $X_2$. This walk must exist, since walks of unbounded length could only exist if there is a cyclic biedged walk. Moreover, $w$ is not empty since $X_2$ contains at least one edge. 
+	
+	Suppose the final edge in $w$ is gray. Since $x$ and $y$ are not in $X_2$, one endpoint of this gray edge must have no black edge incident on it in the full graph else $w$ could be lengthened. This violates the definition of a bidirected graph. Therefore the final edge in $w$ must be black. However, this implies that one endpoint of this black edge has no gray edges incident on it, else $w$ could be lengthened. That is, the black edge is a tip, which contradicts the definition of ultrabubble. Therefore, $X$ does not contain a black bridge edge.
+\end{proof}
+
+\begin{lemma}
+	Let $\{x,y\}$ be a snarl with subgraph $X$. Further, let $u$ be any node, and let $p$ be the shortest path from $u$ to either $x$ or $y$ and $q$ the shortest path from $u$ to either $\hat x$ or $\hat y$. If $u$ is in $X$, then $|p| < |q|$, and if $u$ is not in $X$ then $|q| < |p|$.
+	\label{lemma_shortest_path_determines_subgraph_membership}
+\end{lemma}
+\begin{proof}
+	First assume that $u$ is in $X$. Then $q$ contains $x$ or $y$ by Lemma \ref{lemma_snarl_path_inside_to_outside}. The subpath up to this point is a path between $u$ and either $x$ or $y$ that is strictly shorter than $q$. Therefore, $|p| < |q|$. Similarly, if $u$ is in $X$ then $|q| < |p|$.
+\end{proof}
+
+\begin{lemma}
+	Let $(u, \hat u)$ be a black bridge edge that separates a graph $B(D)$ into connected components $B_1$ and $B_2$ with $u$ in $B_1$ and $\hat u$ in  $B_2$. Further, let $\{x, y\}$ be a snarl subgraph $X$ such that a) $x$ is in $B_2$ and b) $x, y \neq \hat u$. Then $X$ contains $\hat u$ iff $X$ contains $w$.
+	\label{lemma_snarls_across_bridges_are_redundant}
+\end{lemma}
+\begin{proof}
+	 By Lemma \ref{lemma_snarls_have_boundaries_on_one_side_of_bridge}, $y$ is in $B_2$ as well as $x$. Note that if $x = \hat u$ or $y = \hat u$ then the claim is verified trivially, so we may focus on the case where $x \neq \hat u$ and $y \neq \hat u$. In this case, the black edges $(x, \hat x)$ and $(y, \hat y)$ must be in $B_2$.
+ 	
+ 	First, assume $\hat u$ is in $X$. There exists a path $p_1$ from $w$ to $u$ in $B_1$. Note that this implies $p_1$ contains neither $(x, \hat x)$ nor $(y, \hat y)$. There also exists a path $p_2$ from $\hat u$ to $x$ or $y$ that includes neither $(x, \hat x)$ nor $(y, \hat y)$ by Lemma \ref{lemma_snarl_path_completely_inside}. Thus, $p_1p_2$ is a path from $w$ to $x$ or $y$ that includes neither $(x, \hat x)$ nor $(y, \hat y)$, which implies $w$ is in $X$ by Lemma \ref{lemma_snarl_path_completely_inside}.
+ 	 
+ 	Next, assume $w$ is in $X$. There exists a path $p$ from $w$ to $x$ or $y$ that includes neither $(x, \hat x)$ nor $(y, \hat y)$ by Lemma \ref{lemma_snarl_path_completely_inside}. Since $x$ and $y$ are in $B_2$, this path must include $(u, \hat u)$, which means it includes a subpath from $\hat u$ to $x$ or $y$. Therefore, $\hat u$ is in $X$ by Lemma \ref{lemma_snarl_path_completely_inside}
+\end{proof}
+
+
+\begin{lemma}
+	Let $(x, \hat x)$ be a black bridge edge whose removal separates a graph $B(D)$ into connected components $B_1$ and $B_2$ with $x$ in $B_1$ and $\hat x$ in $B_2$. If $\{x, y\}$ is a snarl with subgraph $X$, then $X \subset B_1$
+	\label{lemma_snarl_on_bridge_is_in_one_component}
+\end{lemma}
+\begin{proof}
+	$X$ consists of only nodes that can be reached from $x$ without crossing $(x, \hat x)$ by Lemma \ref{lemma_snarl_path_completely_inside}. Therefore, $X \subset B_1$.
+\end{proof}
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % bibliography
