@@ -98,7 +98,9 @@
 \listoftables
 
 \begin{abstract}
-Theses have elements.  Isn't that nice?
+
+%TODO: write abstract
+
 \end{abstract}
 
 \begin{dedication}
@@ -129,15 +131,7 @@ my moral North Star
 
 \end{frontmatter}
 
-%side projects:
-%- nanopore methylation
-%- LPC
-%pangenomics side projects
-%- contributions to map
-%- contributions to giraffe (probably leave this out)
-%- review papers
-%- contributions to graph L&S
-%pangenomics main projects
+%done:
 %- my vg utilities
 %	- mapq / base quality alignment
 %	- sim
@@ -147,24 +141,39 @@ my moral North Star
 %- consistent snarls
 %- biclique work
 %- mpmap
+%
+% not done
+%side projects:
+%- nanopore methylation
+%- LPC
+%pangenomics side projects
+%- review papers
+%- contributions to graph L&S
+%pangenomics main projects
+%- my vg utilities
+%	- mapq / base quality alignment
+%	- autoindex
 
 \part{Introduction and background}
+
+Coming soon$\ldots$
 
 %In modern genomics, sequence analysis is arguably the most fundamental experimental assay. This is in no small part due to its adaptability 
 
 % find some breathless editorials about genomics
 %The breathless tone of these popular accounts chafes the professional scientist's aesthetic of measured and dispassionate interpretation of data. The sentiment, however, rings true. 
 
-Modern biologists can ask and answer a qualitatively greater set of questions at a quantitatively greater scale than their predecessors. Undergirding this expansion in capabilities is a deepened arsenal of technologies, and DNA sequencing is undoubtedly one of the most fundamental among them. The centrality of sequencing is due in part to the fundamental importance of DNA in biology; DNA is the (nearly) universal medium of heredity and the primary object of evolutionary change. In addition, DNA sequencing has proven to be highly adaptable for assaying various biological processes---many unbiased assays consist mainly in a method to imprint the effects of a process on DNA molecules, then followed by sequencing. 
- 
-% another intro: schrodinger
+%Modern biologists can ask and answer a qualitatively greater set of questions at a quantitatively greater scale than their predecessors. Undergirding this expansion in capabilities is a deepened arsenal of technologies, and DNA sequencing is undoubtedly one of the most fundamental among them. The centrality of sequencing is due in part to the fundamental importance of DNA in biology; DNA is the (nearly) universal medium of heredity and the primary object of evolutionary change. In addition, DNA sequencing has proven to be highly adaptable for assaying various biological processes---many unbiased assays consist mainly in a method to imprint the effects of a process on DNA molecules, which is then followed by sequencing. 
+% 
+%% another intro: schrodinger
+%
+%%TODO: this is too detailed for so early in the introduction, but i'll fix that later
+%%sequencing different technologies
+%Perhaps unsurprisingly then, many advancements in biology methodologies stem directly from advancements in sequencing technology. The problem of sequencing DNA was first solved by Frederick Sanger in 1977 by using low-frequency incorporations of a modified, chain-terminating nucleotide into synthesizing DNA molecules. The resulting shortened products could be separated and distinguished using electrophoresis or chromatography. Though the ``Sanger method'' served as the workhorse for early genome-sequencing projects, it has now been largely supplanted by so-called \emph{next-generation sequencing} (NGS). The term NGS initially encompassed several similar technologies, but today the market is dominated by Illumina's platform. This platform's chemistry generates clusters of identical copies of a DNA molecule using a variant of polymerase chain reaction (PCR). The clusters are then observed during a final round of synthesis in which the DNA molecules are reversibly terminated with a fluorophore-labeled nucleotide, one base at a time. This allows each subsequent nucleotide to be detected optically by its fluorescence. In addition, this process is massively parallel, yielding millions of short sequencing reads from a single sample. Finally, two newer \emph{third-generation sequencing} technologies, one from Pacific Biosciences (PacBio) and one from Oxford Nanopore Technologies (ONT), achieve both high throughput and long read length by sensing individual molecules rather than PCR products. The cost of the longer read length is much higher error rates. Accordingly, NGS and third generation technologies currently coexist on the sequence landscape, each with their own niche of applications.
+%
+%Computational methods are essential to translate sequencing data into biological insight. Often the route to biological insight involves several discrete computational steps that process the data into progressively more information-rich formats. 
 
-%TODO: this is too detailed for so early in the introduction, but i'll fix that later
-%sequencing different technologies
-Perhaps unsurprisingly then, many advancements in biology methodologies stem directly from advancements in sequencing technology. The problem of sequencing DNA was first solved by Frederick Sanger in 1977 by using low-frequency incorporations of a modified, chain-terminating nucleotide into synthesizing DNA molecules. The resulting shortened products could be separated using electrophoresis. Though the ``Sanger method'' served as the workhorse for early genome-sequencing projects, it has now been largely supplanted by so-called \emph{next-generation sequencing} (NGS). Although the term NGS initially encompassed several similar technologies, today the market is almost completely dominated by Illumina's platform. In this platform, synthesizing DNA molecules are terminated reversibly with a fluorophore-containing nucleotide. This allows each subsequent nucleotide to be detected using optics following a round of DNA polymerase extension. In addition, this process is massively parallel, yielding millions of short sequencing reads from a single sample. Finally, two newer \emph{third-generation sequencing} technologies, one from Pacific Biosciences (PacBio) and one from Oxford Nanopore Technologies (ONT), achieve both high throughput and long read length by sensing individual molecules rather than polymerase chain reaction (PCR) products. The cost of the longer read length is much higher error rates. Accordingly, NGS and third generation technologies currently coexist, each with their own niche of applications.
-
-Computational methods are essential to translate sequencing data into biological insight. Often the route to biological insight involves several discrete computational steps that process the data into progressively more information-rich formats. 
-%% standard genomic pipelines
+% standard genomic pipelines
 %reference genomes
 %genome inference
 %assembly
@@ -230,6 +239,7 @@ In this work, we present a novel bioinformatics toolchain for whole genome pantr
 \section{Results}
 
 \begin{figure}[h!]
+\ssp
 \begin{center}
 \includegraphics[width=.75\textwidth]{mpmapfigures/figure1.pdf}
 \caption{\textbf{Diagram of haplotype-aware transcriptome analysis pipeline} \\
@@ -249,6 +259,7 @@ We compared \tool{vg mpmap} against three other mappers: \tool{STAR} \cite{dobin
 We used two different references for the comparison: the standard reference genome with added splice junctions (spliced reference) and a spliced pangenome graph containing both splice junctions and variants (spliced pangenome graph). For \tool{STAR} only the spliced reference was used. 
 
 \begin{figure}[h!]
+\ssp
 \begin{center}
 \includegraphics[width=\textwidth]{mpmapfigures/figure2.pdf}
 \caption{\textbf{Mapping benchmark using RNA-seq data from NA12878} \\
@@ -288,6 +299,7 @@ We also compared the mapping performance of the different methods on the real RN
 \subsection{Haplotype-specific transcript quantification}
 
 \begin{figure}[h!]
+\ssp
 \begin{center}
 \includegraphics[width=.85\textwidth]{mpmapfigures/figure3.pdf}
 \caption{\textbf{Haplotype-specific transcript quantification benchmark using RNA-seq data from NA12878} \\
@@ -315,19 +327,44 @@ To show the advantage of the multipath alignment format when inferring HST expre
 
 Similarly to the mapping benchmark, we also evaluated \tool{rpvg} on RNA-seq data from the CHM13 cell line and NA12878 RNA-seq data from Tilgner et al. \cite{tilgner2014defining} (Supplementary Figure~\ref{fig:expression-t2t} and~\ref{fig:expression-srr}). Overall, similar conclusions can be drawn using these data. It is important to mention that both datasets were used to optimize the parameters of \tool{rpvg}.
 
+\subsection{Assaying isoform-specific genomic imprinting}
+
+\begin{figure}[h]
+\ssp
+\begin{center}
+\includegraphics[width=\textwidth]{mpmapfigures/figure4.pdf}
+\caption{\textbf{Exploratory demonstration of analyzing genomic imprinting using data from GM12878 lymphoblastoid cell line} \\
+Results of the \tool{vg mpmap}-\tool{rpvg} pipeline on RNA-seq data from a lymphoblastoid cell line from the ENCODE Project, focusing on genes previously identified as imprinted in blood. \textbf{a} The proportion of expression attributed to the higher-expressed allele of heterozygous variants among the 20 most significantly imprinted genes from Zink's, et al. study \cite{zink2018insights} compared to all genes. The axes are scaled so that both histograms have the same area. \textbf{b} Isoform-level allele specific expression in NAA60, which was previously identified as imprinted but not as having isoform-dependent reversals in the polarity of imprinting\cite{zink2018insights}. Isoforms with expression less than 0.25 transcripts per million (TPM) are not shown.
+} \label{fig:imprinting}
+\end{center}
+\end{figure}
+
+To demonstrate the utility of the \tool{vg mpmap}-\tool{rpvg} pipeline, we performed an exploratory analysis of genomic imprinting in a human sample. Genomic imprinting is the phenomenon in mammals in which some genes are expressed only from the copy inherited from a specific parent. That is, either the maternal or paternal copy is silenced, regardless of the genomic sequence of that haplotype. This is accomplished through mitotically heritable epigenetic modifications that are established during early development\cite{tucci2019genomic}.
+
+Several previous studies have studied imprinting genome-wide by quantifying ASE in RNA-seq data. These studies have demonstrated that imprinting varies substantially across tissues \cite{baran2015landscape,babak2015genetic} and varies in intensity across genes, with many genes showing biased expression away from one parent-of-origin copy but not complete silencing\cite{babak2015genetic,jadhav2019rna,zink2018insights}. In addition, a handful of genes have been identified in which the polarity of imprinting depends on the isoform: some isoforms of the same gene are biased toward the paternal copy and others toward the maternal copy\cite{zink2018insights}.
+
+The previous genome-wide studies have methodological limitations that diminish their ability to detect isoform-level imprinting. Some have aggregated ASE across all isoforms of the gene, which precludes isoform-level analysis a priori\cite{baran2015landscape,babak2015genetic,jadhav2019rna}. The largest study, by Zink, et al. \cite{zink2018insights}, performed all tests of imprinting on individual SNVs. This method can sometimes detect isoform-level differences if the isoforms have some unshared exons. However, in shared exons, the ASE signal from the highest-expressed isoforms can drown out the signal of lower-expressed isoforms. Depending on the configuration of exons in the isoforms, this can make it very challenging to identify imprinting of opposite polarity within the same gene.
+
+Figure \ref{fig:imprinting} shows results from our exploratory demonstration of isoform-level imprinting analysis using \tool{vg mpmap} and \tool{rpvg}. We ran the entire pipeline using RNA-seq data from a lymphoblastoid cell line derived from 1000 Genomes Project sample NA12889, which was sequenced as part of the Geuvadis project\cite{lappalainen2013transcriptome}. As a confirmatory analysis, we first looked for ASE in genes that have previously been identified as imprinted. In particular, we looked at the 20 genes with the most significant $p$-values from Zink's, et al. study\cite{zink2018insights}. To mirror the methods used in this paper, we derived variant-specific ASE values by aggregating the expression across all HSTs that contain a given allele for a variant. Figure \ref{fig:imprinting}a shows that the \tool{vg mpmap}-\tool{rpvg} pipeline detects ASE at heterozygous variants in these imprinted genes at a markedly higher rate than in background across all genes.
+
+The \tool{vg mpmap}-\tool{rpvg} pipeline is also capable of detecting isoform-dependent genomic imprinting. Figure \ref{fig:imprinting}b shows an illustrative example in the gene NAA60, which codes for an enzyme that acetylates the N-terminus of proteins in the Golgi apparatus. The isoforms show a complex pattern of imprinting polarity, which does not correlate strongly with exons or start sites in any particular genomic region. Given the large differences in expression of these isoforms, the SNV-based analysis would have had difficulty identifying imprinting in the more lowly-expressed isoforms, and indeed this gene was reported as imprinted (in fact, it is among the 20 most significantly genes referred to above) but not as having isoform-dependent imprinting\cite{zink2018insights}. It should be emphasized that this exploratory analysis of a single sample, while suggestive, is insufficient to conclusively demonstrate isoform-dependent imprinting in NAA60. Doing so would require further biological replicates and more rigorous controls for cis-regulation and cell line clonality\cite{jadhav2019rna}.
+
 \section{Discussion}
 
 The pace of development in the field of eukaryotic pangenomics has surged in recent years. Improvements in sequencing technology have made it practical to characterize the genomes of increasingly many samples. As a result, pangenomes made from tens to hundreds of reference-quality genome assemblies have been constructed for several agricultural organisms \cite{jayakodi2020barley,crysnanto2019accurate,liu2020pan}, and similar efforts are underway for humans by the Human Pangenome Reference Consortium and others \cite{ebert2021haplotype}. Simultaneously, the bioinformatics tools to do pangenomic analyses have matured to the point of practicality for many applications \cite{manuweera2019pangenome,hickey2020genotyping,siren2020genotyping}. Moving forward, we anticipate that pangenomic methods will continue to expand to inform increasingly many areas of genomics \cite{groza2020personalized}.
 
 In this work, we have presented one step in this expansion: generalizing transcriptomics into pantranscriptomics. Our novel bioinformatics pipeline provides a full stack of tools for pantranscriptomic analysis. It can construct pantranscriptomes, map RNA-seq reads to these pantranscriptomes, and quantify transcription with haplotype-resolution. The construction takes advantage of efficient pangenome data structures, the mapping achieves a desirable balance of accuracy and speed, and the quantification can infer haplotype-specific transcript expression even when the sample's haplotypes are not known beforehand.
 
-Some downstream use cases are already apparent. This pipeline can be used to characterize genotypes and haplotypes in coding regions from RNA-seq data, giving access to the exact transcript sequences in a sample's transcriptome. It also can be used to study causes of haplotype-specific expression, such as imprinting, nonsense-mediated decay, and cis-regulation. In both cases, this pipeline increases the information that is available from RNA-seq data without paired genomic sequencing. This will enable low-cost study designs and deeper reanalyses of existing data.
+Some downstream applications are already apparent. For one, the pipeline can be used to study causes of haplotype-specific differential expression. We demonstrated its capabilities on one such example: genomic imprinting. The demonstration showed suggestive evidence of complex patterns of imprinting at the isoform level, which would have difficult or impossible to detect with previous genome-wide methodologies. The pipeline could be similarly used to study other sources of haplotype-specific expression, such as nonsense-mediated decay and cis-regulation. 
+
+% TODO: if we get the HLA stuff done for this submission it would fit well in this section
+Another application is characterizing genotypes and haplotypes in coding regions from RNA-seq data. This could give access to the exact transcript sequences in a sample's transcriptome. In both of these applications, this pipeline increases the information that is available from RNA-seq data without paired genomic sequencing. This will enable low-cost study designs and deeper reanalyses of existing data.
 
 Of course, our pipeline also has limitations. We have developed it to have good performance on pantranscriptomes constructed from phased variant calls. This is presently the most available data resource for constructing pangenomes. However, as increasingly many haplotype-resolved assemblies are produced, we predict that the emphasis in pangenomics will shift to pangenome graphs constructed from whole genome alignments. Constructing these graphs is currently an area of active research \cite{li2020design,jandrasits2018seq}. Such graphs have more complicated topologies, often involving complex cyclic motifs. Experience leads us to believe that pantranscriptomic tools will require further methods development to use these data resources effectively.
 
 Our pipeline is optimized for short-read RNA-seq data. The higher-error long-read RNA-seq technologies developed more recently require specifically-tailored algorithms for efficient analysis \cite{li2018minimap2,wyman2019technology}. Pantranscriptomic analyses of long-read RNA-seq data will likewise require further development, although the pipeline described here could serve as a platform for this development. Nevertheless, the cost-effectiveness of short-read sequencing virtually ensures that it will remain an important part of the sequencing landscape into the near future.
-
-Our pipeline also relies on having a comprehensive pantranscriptome that contains many of the sample's haplotype-specific transcripts. The pantranscriptomes used in this study (based on the 1000 Genome Project) provided good results in the two samples analyzed, but this performance may not extend to samples from other populations. Here?and throughout pangenomics?there is a compelling case to improve the completeness of data resources through more diverse sampling.
+% TODO: I should add a sentence here about how there are also a bunch of existing short read data resources that people will continue to want to use
+Finally, our pipeline also relies on having a comprehensive pantranscriptome that contains many of the sample's haplotype-specific transcripts. The pantranscriptomes used in this study (based on the 1000 Genome Project) provided good results in the three samples analyzed, but this performance may not extend to samples from other populations. Here---and throughout pangenomics---there is a compelling case to improve the completeness of data resources through more diverse sampling.
 
 %%%%%%%%%%% Comment thread imported from Google doc %%%%%%%%%%%%%%%
 % Benedict: Might also be worth mentioning single-cell applications. e.g. Imagine trying to quantify somatic haplotype-specific expression in subsets of tumor cells? I appreciate this is a bit science fiction now, but perhaps not for too much longer.
@@ -427,6 +464,7 @@ It is worth noting that multipath alignments are acyclic by construction, since 
 While sequence alignments have well-established optimization criteria, there is no such criterion for optimizing the topology of a multipath alignment. In lieu of one, we adopt heuristics that are motivated by the common topological features of pangenome graphs. Our high-level strategy is to use exact match seeds to anchor alignments. We then use dynamic programming to align between seeds and within sites of variation in the graph, which we identify using the snarl decomposition of the pangenome graph. Using a multiple-traceback algorithm, we can then obtain alignments to different paths through the graph as necessary.
 
 \subsubsection{Anchoring alignments}
+\label{sec:anchoring}
 
 To use a cluster of exact match seeds to anchor a multipath alignment, it is first necessary to compute the reachability relationships between the seeds. This is a non-trivial problem. 
 
@@ -478,10 +516,12 @@ The motivation for this model is that the length of the match starting at positi
 
 The fragment distribution is modeled as a normal random variable with mean $\mu$ and variance $\sigma^2$. We use a method of moments estimator for a truncated normal distribution so that the parameter estimation is robust to possible mismappings. In particular, we discard the largest and smallest $\frac{1 - \gamma}{2}N$ fragment length measurements (default ${\gamma = 0.95}$). This procedure makes the estimator insensitive to a sufficiently small fraction of outliers. The remaining $\gamma N$ measurements correspond to a sample from a truncated normal distribution with the same $\mu$ and $\sigma^2$. The following estimators can be derived using method of moments on this truncated normal distribution:
 
-\begin{align}
+\begin{equation}
+\begin{aligned}
     \hat \mu &= \bar x \\
 	\hat \sigma^2 &= s^2\left(1 - \frac{2\alpha\phi(\alpha)}{\gamma}\right)^{-1},
-\end{align}
+\end{aligned}
+\end{equation}
 	
 \noindent where $\bar x$ and $s^2$ are the empirical mean and variance among the retained $\gamma N$ measurements, and ${\alpha = \Phi^{-1}\left(\frac{1 - \gamma}{2}\right)}$ is the left truncation point on a standard normal distribution.
 
@@ -611,9 +651,11 @@ We denote the set of all fragment probabilities in a cluster as $F$ and the prob
 % \todo{I have changed it from \{\} to (). Jordan can you confirm that this notation is correct/better?}
 % Jordan: yes, that's better
 
-\begin{align}
+\begin{equation}
+\begin{aligned}
     \left|\epsilon^{i}-\epsilon^{j}\right| &< 10^{-8} \\	\left|p_t^{i}-p_t^{j}\right| &< 10^{-8},\quad\forall t\in T
-\end{align}
+\end{aligned}
+\end{equation}
 
 We also associate each set of collapsed fragments with $c$, the number of collapsed fragments in the set. The resulting set $E$ of tuples ${\left(\epsilon, \textbf{p}, c\right)}$ is subsequently used to infer the expression of the HSTs in the pantranscriptome.
 %For each set of collapsed probabilities, we keep the number of fragments $c$ in the set: $\textcolor{red}{e=\left(\epsilon,\textbf{p},c\right)}$. The set of collapsed fragment probabilities $E$\textcolor{red}{, with $e\in E$}, are subsequently used to infer the expression of the HSTs in the pantranscriptome. 
@@ -690,6 +732,30 @@ The method's ability to predict the correct expression value was evaluated using
 \newline
 The CHM13 cell line is effectively haploid, so only a single HST is expected to exist for each transcript. We used this feature of the data to measure the haplotype inference performance of each method on the T2T CHM13 data. We defined each HST as either major or minor. Major HSTs were defined as the highest expressed haplotype for each transcript; the rest were defined as minor. The fraction of expression from minor HSTs is a lower bound on the fraction of incorrectly inferred transcript expression. Accordingly, we used the number of major and minor transcripts that each method predicted to be expressed to compare their haplotype inference performance.
 
+\subsection{Transcript quantification evaluation}
+
+We compared \tool{rpvg}'s quantification accuracy against three other transcript quantification tools: \tool{Kallisto}, \tool{Salmon} and \tool{RSEM}. Haplotype-specific transcript indexes for \tool{Kallisto}, \tool{Salmon} and \tool{RSEM} were built from the HST sequence FASTA files generated by \tool{vg rna}. \tool{Salmon} indexing was run with duplicates kept and, on the real data, the reference genome was given as a decoy. The Bowtie2 mapper was used in \tool{RSEM} with the maximum number of alignments per read increased to 1,000. The transcript expression was estimated using default parameters for all methods, except for the real data where strand-specific inference was enabled. \tool{Kallisto} and \tool{Salmon} were run without bias correction as it did not provide a clear advantage on the ``Europe (excl. CEU)'' pantranscriptome using the SRR1153470 reads (data not shown). \tool{RSEM} was only run on the NA12878 sample-specific transcriptome and the ``Europe (excl. CEU)'' pantranscriptome, as it did not scale to the two largest pantranscriptomes. 
+
+\tool{rpvg} was run using default parameters and with two different types of alignments inputs: the standard multipath alignments from \tool{vg mpmap} and single-path alignments generated by finding the best scoring path in the multipath alignments using \tool{vg view}. The fragment length distribution parameters estimated by \tool{vg mpmap} were given as input to \tool{rpvg} when using the single-path alignments as they are lost from the alignment file during the conversion. \tool{rpvg} was run with a ploidy of 2 for all read sets, including CHM13. For the simulated data, the exon-only splicing graphs were used when mapping the reads using \tool{vg mpmap}. These graphs are more comparable to the transcriptomes that the other methods use for (pseudo)-alignment. For the real data, we used the whole spliced pangenome graphs. All HSTs with a haplotype probability below 0.8 were filtered from the \tool{rpvg} output. The SRR1153470 and CHM13 read data was used to optimize the parameters of \tool{rpvg}.  
+\newline 
+\newline
+For the SRR1153470 and ENCSR000AED data, which are both NA12878 cell lines, we compared the quantified HSTs to the NA12878's haplotypes from the 1000 Genomes Project data. We considered an HST consistent with these haplotypes if it matched the sequence of one of the two possible NA12878 haplotype versions of the transcript. The haplotyping performance of each method was then estimated by comparing the number and fraction of quantified HSTs with positive expression that were consistent. 
+
+We used transcripts per million (TPM) to measure expression. For the simulated data we re-calculated the TPM value for all methods. The reason was that we wanted to ensure that there was no bias towards \tool{RSEM}, which was used to estimate the expression profile employed by \tool{vg sim} to parameterize the HST expression values. The TPM value depends on the effective transcript length, which is not calculated in the same manner for each method. Therefore, if this is not corrected, methods that estimate the effective transcript length more similarly to \tool{RSEM} will have an advantage that does not depend on their ability to predict correct expression values. The true fragment length distribution parameters and the effective transcript length approach employed by \tool{rpvg} (similar to \tool{Salmon}) was used when re-calculating the TPM values.
+
+The method's ability to predict the correct expression value was evaluated using the simulated data for which the true expression is known. The true expression values were calculated from a table provided by \tool{vg sim}, which indicates the transcript of origin for each read. The simulated TPM values were calculated in the same manner as described above. We used both Spearman correlation and mean absolute relative difference (MARD) to quantify concordance between estimated and true expression. 
+\newline 
+\newline
+The CHM13 cell line is effectively haploid, so only a single HST is expected to exist for each transcript. We used this feature of the data to measure the haplotype inference performance of each method on the T2T CHM13 data. We defined each HST as either major or minor. Major HSTs were defined as the highest expressed haplotype for each transcript; the rest were defined as minor. The fraction of expression from minor HSTs is a lower bound on the fraction of incorrectly inferred transcript expression. Accordingly, we used the number of major and minor transcripts that each method predicted to be expressed to compare their haplotype inference performance.
+
+\subsection{Demonstration of analyzing genomic imprinting}
+
+We obtained RNA-seq data sets from samples NA11832, NA11930, NA12775, and NA12889 from Geuvadis data portal and ran them through the \tool{vg mpmap}-\tool{rpvg} pipeline. Each sample had two accessions, which were combined into one data set (see Supplementary Table~\ref{tab:read-sets}). We also obtained and analyzed data from sample GM12878 from the ENCODE Project (ENCSR000AED replicate 1)\cite{encode2012integrated}. These samples are all unrelated. All parameters used were identical to those used in the real data evaluations of \tool{vg mpmap} and \tool{rpvg} above. The Geuvadis samples were used to troubleshoot the analysis and identify potentially interesting genes to highlight in the demonstration. The analyses were then repeated on the ENCODE sample. This design reduces the risk of identifying noise as signal. Only the results final analysis are the ones reported in the Results section, but results were broadly consistent across all samples.
+
+To confirm that the pipeline could detect previously known ASE, we looked for signatures of imprinting in the 20 genes with the most statistically significant parent-of-origin ASE in the study by Zink, et al. \cite{zink2018insights} (Supplementary Table 6). One of these genes, \emph{RP11-69E11.4}, had since been removed from the GENCODE database, so we excluded it from the analysis. Zink's, et al. study analyzed ASE on individual SNVs. To make our results comparable to theirs, we translated \tool{rpvg}'s HST-based expression quantification into a corresponding variant allele-based expression quantification. To do so, we used a table of the HSTs that contain each variant in the pantranscriptome, which can be produced by \tool{vg rna}. The expression of each allele was computed as the sum of the expression of each HST that contained the allele.
+
+We decided to highlight the haplotype-specific expression of the NAA60 gene in depth because it consistently showed monoallelic expression for both haplotypes across different isoforms in the initial exploratory data sets. To identify the haplotype of origin for different HSTs, we compared the variants associated with each HST (using the table from \tool{vg rna}) to the sample's haplotypes from the 1000 Genomes Project VCF. Equal-tailed credible intervals were approximated using \tool{rpvg}'s Gibbs sampling method.
+
 \subsection{Code and data availability}
 
 A list of the versions used of each method is available as Supplementary Table~\ref{tab:versions}. All bash scripts with exact command-lines used to generate the results are available at the following GitHub repository: \url{https://github.com/jonassibbesen/vgrna-project-paper}. This includes log files, references to the Docker containers used to run the methods and links to the raw simulated sequencing data used in the evaluation. Furthermore, all created spliced pangenome graphs and pantranscriptome haplotype-specific transcript sets are available for download at the repository for use in other projects. All custom C++, Python and R scripts used for the evaluation and plotting are available at \url{https://github.com/jonassibbesen/vgrna-project-scripts}. 
@@ -698,22 +764,69 @@ A list of the versions used of each method is available as Supplementary Table~\
 \part{Algorithmic infrastructure for pangenomics}
 
 \chapter{Interfacing with the linear reference-based software ecosystem}
+\label{chapter:surject}
 
-\section{Introduction}
+\section{Preamble}
 
-not published
-mapping to graphs
-GAM and GAF format
-ecosystem tied to SAM/BAM
-interface between these
+%TODO: add citations for papers that used surject
+This section contains a description of a tool in the VG toolkit that I designed and implemented. It is unpublished, and I have no intention to publish it beyond this dissertation in the future. However, I consider it a sufficiently significant contribution to the field of pangenomics to warrant its own chapter here. It has already been used as a component in a number of publications\cite{grytten2019graph,groza2020personalized,crysnanto2020bovine,martiniano2020removing,siren2020genotyping}.
 
+\section{Introduction and motivation}
 
+One of the most fundamental tasks in computational pangenomics is mapping and aligning sequencing reads to a pangenome graph. The VG toolkit itself has three separate mapping algorithms (\tool{vg map}\cite{garrison2018variation}, \tool{vg mpmap}\cite{sibbesen2021haplotype}, and \tool{vg giraffe}\cite{siren2020genotyping}), and other tools have also been published\cite{kim2019graph,rakocevic2019fast,rautiainen2020graphaligner}. Internally, all of these tools align the read sequence to the sequence of some walk through the pangenome graph. In the case of the three VG mapping tools and \tool{GraphAligner}\cite{rautiainen2020graphaligner}, they also output these graph-based alignments for downstream analysis.
+
+Graph-based alignments cannot be easily expressed in the conventional file format used for read mappings: SAM/BAM\cite{li2009sequence}. In addition to the base-level alignment, the graph alignments must also encode the alignment's walk through the graph. For this reason, new file formats have been adopted: the VG toolkit's GAM format and more recently \tool{minigraph}'s GAF format\cite{li2020design}. Both of these formats are similarly expressive, so I will not emphasize the distinctions between them. 
+
+While the graph-based alignments enable some novel downstream applications\cite{hickey2020genotyping,rautiainen2020graphaligner}, the broader ecosystem of computational genomics tools remains heavily invested in the SAM/BAM format. To interface with this ecosystem, VG needs a method to convert its graph-based alignments into linear alignments that can expressed in SAM or BAM. In this chapter, I describe the \tool{vg surject} algorithm, which fills this role.
+
+\section{Design and implementation of \tool{vg surject}}
+
+Converting a graph-based alignment into a linear alignment is a trivial and lossless operation. In VG, the path of the linear reference sequence is maintained as a labelled walk within a pangenome graph, so all that is required is to look up the walk through the graph taken by the aligned subsequence of the linear reference. The reverse transformation is more challenging. If any part of a read's alignment lies off of the labeled walk of the reference sequence, there is no lossless conversion. The \tool{vg surject} algorithm is designed with the principle that, despite the inevitable loss, as much of the graph-based alignment should be preserved as possible. The algorithm attempts to realign only the off-reference portions of the alignment onto the reference path so that the end result is nearly-identical alignment that can be losslessly converted into a linear alignment.
+
+\subsection{Connection to the multipath alignment problem}
+
+\tool{vg surject} begins by identifying the segments of the alignment that follow the path of the reference sequence. In doing so, it can also identify the interval of the reference path that the remainder could be aligned to. These reference-overlapping segments must then be connected with intervening alignments to this interval of the reference. This bears a strong similarity to the algorithm developed for \tool{vg mpmap} (see section \ref{sec:anchoring}) for constructing multipath alignments (Supplementary Algorithm \ref{alg:reachability}). There, the task was to identify the reachability relationships between exact match seeds in a directed acyclic graph (DAG), which would then be connected with intervening alignments. Here, the task is to connect portions of an aligned sequence to a subinterval of the reference sequence (which can be seen as a very constrained DAG). \tool{vg surject} takes advantage of this similarity and repurposes the same underlying algorithm for this rather different use case.
+
+\subsection{Spliced alignments}
+
+Special considerations must be made for spliced alignments of RNA-seq data, which include long unaligned intronic sequences. In the SAM/BAM formats, expressing these alignments is relatively simple. The CIGAR string can include an `N' operation, which indicates unaligned sequence. Due to the CIGAR string's run-length encoding, a long unaligned sequence requires similar space to represent as a short one. \tool{vg surject}'s algorithm described above does not handle these cases so gracefully. When aligning to a spliced pangenome graph, the splice junctions are present in the graph as edges. However, when converting to an alignment to the path of the reference as an intermediate, the alignment to the intronic sequence requires explicitly spelling out the full path of the intron. For long introns, this can be prohibitively slow.
+
+Because of this challenge, \tool{vg surject} includes specialized features for converting transcriptomic alignments. Before any step in the algorithm that would look at the full intronic sequence, it first attempts to decompose the problem into smaller realignment problems that fall within exons. The exonic segments are identified using a DAG in which the nodes correspond to reference overlapping segments of the alignment, and edges indicate that the segments are collinear on both the read and the reference sequence. All transitive edges in this graph are removed as a preprocessing step. An edge in this graph is flagged as a splice junction if it meets several criteria: 
+
+\begin{enumerate}
+\item All source-to-sink paths in the DAG use the edge. This ensures that it is safe to assume that the full surjected alignment will also use this edge. \label{item:constriction}
+\item The two alignment segments connected by the edge directly abut on the read sequence. This ensures that the intervening alignment corresponds to a deletion of the reference sequence. \label{item:deletion}
+\item The deletion implied by \ref{item:deletion}. is at least 20 bp long.
+\item There is an edge in the spliced pangenome graph connecting the aligned segments, which suggests that the graph alignment follows known splice junction.
+\end{enumerate}
+
+\noindent If these conditions are met, \tool{vg surject} partitions the realignment problem on either side of this edge, maintaining the alignment to the intron implicitly. When performing the final conversion to SAM/BAM, the implied `N' operations are added to the CIGAR string explicitly.
+
+The latter three conditions to identify a splice edge are fairly straightforward to check. Condition \ref{item:constriction} is not quite trivial. However, it can be determined using a variant of the forward-backward algorithm that counts walks through the DAG. If the nodes are indexed in topological order by $i = 1,\ldots,N$, then we can count walks using the following dynamic programming recursion:
+
+\begin{align}
+f_i = \begin{cases}
+1,& i\text{ is a source node} \\
+\sum_{\text{edges }(j,i)}f_j,& \text{else}
+\end{cases}
+\end{align}
+
+\noindent The total number of walks can then be computed by summing $f_i$ over sink nodes. The same computation can be computed in topological order as well:
+
+\begin{align}
+b_i = \begin{cases}
+1,& i\text{ is a sink node} \\
+\sum_{\text{edges }(i,j)}b_j,& \text{else}
+\end{cases}
+\end{align}
+
+With both of these dynamic programming problems completed, the number of walks that use a given edge $(i,j)$ is equal to $f_i \cdot b_j$. To verify condition \ref{item:constriction} above, it is sufficient to compare this number to the total number of walks computed after the forward pass.
 
 \chapter{Memory-efficient dynamic sequence graphs}
 
 \section{Preamble}
 
-This chapter consists of the entirety of the paper ``Efficient dynamic variation graphs'', which was published in \emph{Bioinformatics}. I share primary authorship on this paper with Adam M. Novak, and the paper was also a close collaboration with the last author, Erik Garrison. This paper describes and compares several implementations of sequence graphs. I am responsible for implementing HashGraph, PackedGraph, and part of XG. Erik Garrison is responsible for implementing ODGI and part of XG. Adam M. Novak helped design the data model and implement the python bindings. Erik Garrison and I primarily contributed to writing the  paper.
+This chapter consists of the entirety of the paper ``Efficient dynamic variation graphs'', which was published in \emph{Bioinformatics}. I share primary authorship on this paper with Adam M. Novak, and the paper was also a close collaboration with the last author, Erik Garrison. This paper describes and compares several implementations of sequence graphs. I am responsible for implementing HashGraph, PackedGraph, and part of XG. Erik Garrison is responsible for implementing ODGI and part of XG. Adam M. Novak helped design the data model and implement the Python bindings (with help from Cecilia Cisar). Erik Garrison and I wrote the majority of the paper.
 
 \section{Introduction}
 
@@ -956,6 +1069,7 @@ Thus, the values they store are also highly correlated.
 %Modifying path step records can be expensive, but when the number of traversing paths is relatively small, it remains in higher caches and can be accomplished efficiently.
 
 \begin{table}
+\ssp
   \centering
 \begin{tabular}{>{\raggedleft\arraybackslash}p{.23\columnwidth}|>{\raggedright\arraybackslash}p{.2\columnwidth}>{\raggedright\arraybackslash} p{.2\columnwidth}>{\raggedright\arraybackslash} p{.24\columnwidth}}
 \textbf{Model} & HashGraph & ODGI & PackedGraph  \\
@@ -1097,6 +1211,7 @@ We find that for all methods, load memory scales almost perfectly with node coun
 Due to differences in variant density among the chromosomes, the average correlation relative to sequence length is lower ($R^2 = 0.986$).
 
 \begin{table}
+\ssp
   \centering
 \begin{tabular}{c||r|r|r|r|r}
  & \multicolumn{1}{c|}{Build} & \multicolumn{1}{c|}{Load} & \multicolumn{3}{c}{Iteration rate (millions)} \\
@@ -1145,6 +1260,54 @@ Recent results demonstrate that many basic bioinformatic problems can be general
 Should these pangenome representations become common or standard, then variation graph data structures like those we have presented here will form the basis for a wide range of pangenomic methods.
 
 \chapter{Automated index coordination within VG}
+
+\section{Introduction}
+
+Since its initial publication, VG\cite{garrison2018variation} has become one of the most widely used software tools for graph-based pangenomics. Although the VG toolkit has many functionalities, it is best known for read mapping to sequence graphs. Indeed, VG contains three separate mapping algorithms:
+
+\begin{enumerate}
+\item vg map: the original, highly accurate mapping algorithm\cite{garrison2018variation}
+\item vg giraffe: the much faster and still accurate haplotype-based mapping algorithm\cite{siren2020genotyping}
+\item vg mpmap: the splice-aware RNA-seq mapping algorithm that can produce multipath alignments\cite{sibbesen2021haplotype}
+\end{enumerate} 
+
+Each of these mapping tools depends on a sizeable body of research in specialized data structures and algorithms\cite{siren2017indexing,chang2020distance,siren2020haplotype,eizenga2020efficient}. As a result, they each require a different set of indexes to be built before mapping. Historically, navigating the indexing process has been a pain point for VG's users. The indexing algorithms and their documentation are spread across several VG subcommands, and the steps need to be applied in a specific order to produce valid, usable results.
+
+The VG autoindex utility is designed to alleviate the pain involved in this process. Rather than having an interface based on which index the user wants to produce, it has an interface based on which mapping tool they want to run. The inputs are all common interchange formats like FASTA, VCF, and GFA. Internally, autoindex has the logic of the VG team's best practice indexing pipelines built in. Power users might still find need for the individual indexing subcommands, but the goal of autoindex is to produce indexes for any common use case in a single, easily-understood shell command.
+
+\section{Methods and implementation}
+
+The central abstraction in autoindex is the \emph{recipe graph} (Figure \ref{fig:recipe_graph}). This graph is a bipartite directed acyclic graph with two classes of nodes: \emph{file nodes} and \emph{recipe nodes}. The file nodes correspond to either input data (provided in interchange formats) or to VG indexes. The recipe nodes correspond to algorithms to produce VG indexes from a set of file nodes, which may correspond either to input data or to intermediate indexes. Each recipe node expresses a many-to-many relationship between file nodes: the recipe may require multiple files as input, and it may produce multiple files as output. This graph is hard-coded into VG. Each of the constituent recipes is based on the best practices developed for the VG developers' own pipelines.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{autoindexfigures/recipe_graph.pdf}
+  \caption{
+    \label{fig:recipe_graph}
+    \textbf{Two plans in the recipe graph.}
+    Plans for the indexes required by \textbf{a} \texttt{vg mpmap} and \texttt{rpvg} and by \textbf{b} \texttt{vg giraffe} are highlighted in the recipe graph. Rectangular nodes correspond to indexes or data files, and circular nodes correspond to recipes. Lower numbers on the recipe nodes indicates higher priority. Gray shading indicates provided data, and blue shading indicates the target indexes being constructed.
+    }
+\end{figure}
+
+\subsection{Planning index construction pipelines}
+
+The autoindex utility is equipped with an algorithm that determines the best pipeline, referred to as a \emph{plan}, to construct any index in the recipe graph using a given set of inputs. Recipes are labeled with a priority level: a total ordering that is used to determine which recipe is preferred when more than one recipe could be used to construct the same index. A plan is considered suboptimal whenever a higher priority recipe could be used to construct any of its indexes. In general, higher priority recipes correspond to improved versions of indexes that can be constructed using additional information. For example, path queries can be improved if the variants in a VCF file are phased\cite{siren2020haplotype}. 
+
+The planning algorithm uses an exhaustive search to find the optimal plan. To begin, all file nodes that have been provided as input data are labeled complete. The search begins by initializing a queue with the target index. In each iteration, the lowest-valued file node (according to the partial order defined by the recipe graph, which is a DAG) on the queue is de-queued. If this file node is labeled complete, nothing is added to the queue. Otherwise, the file node's highest-priority recipe is added to the plan and the inputs for that recipe are added to the queue. If there is no recipe to construct the index, the search backtracks through the plan marking recipes impossible until finding a file node that has remaining recipes that have not yet been marked impossible. This algorithm is exponential in the worst case. However, the recipe graph is fairly small, and in practice the planning process takes a negligible amount of time.
+
+The indexes required for each of VG's mapping tools are hard-coded into the autoindex utility. This is what allows autoindex to provide its tool-oriented interface. The user requests whatever indexes are required to use a tool. The autoindex utility then looks up a list of indexes that are sufficient to run that tools and finds the optimal plan to construct each of them based on the available data. The individual index's plans are then merged into one plan, and the pipeline is executed. 
+
+This design has several benefits. If pipelines were described explicitly, it would be challenging to design them to adapt appropriately when different data sources are available. In addition, many intermediate indexes are shared across different pipelines. Constructing these indexes in explicit plans would require either significant duplicated code or complicated hard-coded logic. Instead, the autoindex utility pushes all of that complexity into the planning algorithm. Each recipe can be developed as an atomic unit, which makes them easy to maintain. It is also easy to extend the indexing ecosystem within VG, which can be accomplished by adding file nodes and recipes. The logic of integrating these new indexes into pipelines is then determined automatically.
+
+\subsection{Improving the computational performance of indexing pipelines}
+
+The VG autoindex utility is designed to perform well on a moderately large compute server, which is generally the computational environment that pangenomics practitioners operate in. Accordingly, there is likely to be a significant number of compute threads available, as well as a reasonably large bank of RAM. In our experience, it is essential that indexing pipelines utilize upwards of 8 threads in order to be practical at the scale of eukaryotic pangenomes. Accordingly, autoindex must be designed so that it can use these compute resources effectively.
+
+Autoindex's primary strategy for multithreading is to chunk input data according to chromosomes or contigs. Many indexes can be constructed fully in parallel across these chunks. However, in the final steps, it is generally necessary to merge these chunks with a single-threaded algorithm to produce a usable index for mapping. Up until that point, a consistent chunking of contigs is maintained across all recipes. The autoindex utility also uses a scheduling algorithm that attempts to stay within the constraints of available memory. It estimates the memory required to construct each chunk, and only executes the construction algorithm if there is sufficient memory available.
+
+%target architecture
+%chunking and multithreading
+%memory constraints
 
 \part{Graph theoretic contributions}
 
@@ -1620,6 +1783,7 @@ For de Bruijn graphs, Stark is faster than either tool, although this performanc
 %Guarantees walk space, works on general overlap graphs
 
 \begin{table}[h!]
+\ssp
 \begin{center}
 \begin{tabular}{ ||p{2cm}|p{3cm}|p{2.75cm}|p{2cm}|| }
 %|m{3cm}|m{3cm}|m{3cm}|m{3cm}|m{3cm}| } 
@@ -1657,6 +1821,9 @@ It could also facilitate direct analyses of assembly graphs in metagenomics appl
 
 \part{Discussion}
 
+%TODO:
+Coming soon$\ldots$
+
 \appendix
 
 \part{Appendices}
@@ -1670,6 +1837,7 @@ This Appendix contains the supplementary information included with the preprint 
 \section{Supplementary Figures}
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=0.8\textwidth]{mpmapfigures/figureS10.pdf}
 \caption{\textbf{Diagram of a multipath alignment} \\
@@ -1679,6 +1847,7 @@ A diagrammatic comparison between the multipath alignment output of vg mpmap and
 \end{figure}
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=\textwidth]{mpmapfigures/figureS1.pdf}
 \caption{\textbf{Mapping benchmark to novel splice-junctions using RNA-seq data from NA12878} \\
@@ -1688,6 +1857,7 @@ RNA-seq mapping results comparing vg mpmap against three other methods using sim
 \end{figure}
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=0.8\textwidth]{mpmapfigures/figureS2.pdf}
 \caption{\textbf{Graph-based mapping benchmark using RNA-seq data from NA12878} \\
@@ -1698,6 +1868,7 @@ Mapping accuracy and sensitivity for vg mpmap and three other methods using simu
 
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=\textwidth]{mpmapfigures/figureS3.pdf}
 \caption{\textbf{Mapping benchmark using RNA-seq training data from NA12878} \\
@@ -1707,6 +1878,7 @@ RNA-seq mapping results comparing vg mpmap and three other methods using the sim
 \end{figure}
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=\textwidth]{mpmapfigures/figureS4.pdf}
 \caption{\textbf{Mapping benchmark using RNA-seq training data from CHM13} \\
@@ -1716,6 +1888,7 @@ RNA-seq mapping results comparing vg mpmap against three other methods using rea
 \end{figure}
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=0.8\textwidth]{mpmapfigures/figureS5.pdf}
 \caption{\textbf{Haplotype-specific transcript uniqueness in a 1000 Genomes Project pantranscriptome} \\
@@ -1725,6 +1898,7 @@ The fraction of HSTs that are unique to each sample in the 1000 Genomes Project 
 \end{figure}
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=0.8\textwidth]{mpmapfigures/figureS6.pdf}
 \caption{\textbf{Haplotype-specific transcript expression correlation benchmark using RNA-seq data from NA12878} \\
@@ -1734,6 +1908,7 @@ Haplotype-specific transcript (HST) quantification results comparing rpvg and th
 \end{figure}
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=\textwidth]{mpmapfigures/figureS7.pdf}
 \caption{\textbf{Multipath alignment benchmark using RNA-seq data from NA12878} \\
@@ -1743,6 +1918,7 @@ Haplotype-specific transcript (HST) quantification results comparing rpvg with s
 \end{figure}
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=\textwidth]{mpmapfigures/figureS8.pdf}
 \caption{\textbf{Haplotype-specific transcript quantification benchmark using RNA-seq training data from CHM13} \\
@@ -1752,6 +1928,7 @@ Haplotype-specific transcript (HST) quantification results comparing rpvg agains
 \end{figure}
 
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=\textwidth]{mpmapfigures/figureS9.pdf}
 \caption{\textbf{Haplotype-specific transcript quantification benchmark using RNA-seq training data from NA12878} \\
@@ -1761,6 +1938,7 @@ Haplotype-specific transcript (HST) quantification results comparing rpvg agains
 \end{figure}
  
 \begin{figure}[H]
+\ssp
 \begin{center}
 \includegraphics[width=\textwidth]{mpmapfigures/figureS11.pdf}
 \caption{\textbf{Diagram of haplotype-specific transcript quantification in rpvg
@@ -1773,6 +1951,7 @@ Diagram showing an overview of how rpvg infers expression of haplotype-specific 
 \section{Supplementary Tables}
 
 \begin{table}[H]
+\ssp
 \footnotesize
 \begin{tabular}{L{0.13\textwidth}| L{0.25\textwidth} | R{0.12\textwidth} | R{0.1\textwidth} | R{0.11\textwidth} | R{0.11\textwidth}}
 \textbf{Name} & \textbf{Description} & \textbf{Non-exonic variant filter} & \textbf{Number of samples} & \textbf{Number of exonic variants} & \textbf{Number of total variants} \\
@@ -1791,6 +1970,7 @@ Diagram showing an overview of how rpvg infers expression of haplotype-specific 
 \end{table}
 
 \begin{table}[H]
+\ssp
 \footnotesize
 \begin{tabular}{L{0.13\textwidth} | L{0.14\textwidth} | R{0.12\textwidth} | L{0.13\textwidth} | R{0.11\textwidth} | R{0.17\textwidth}}
 \textbf{Name} & \textbf{Transcript annotation} & \textbf{Number of transcripts} & \textbf{Haplotype set}$\dag$ & \textbf{Number of haplotypes} & \textbf{Number of haplotype-specific transcripts} \\
@@ -1810,6 +1990,7 @@ $\dag$See Supplementary Table \ref{tab:haplotype-sets} for more details on the h
 \end{table}
 
 \begin{table}[H]
+\ssp
 \footnotesize
 \begin{tabular}{L{0.15\textwidth}| L{0.1\textwidth} | L{0.09\textwidth} | L{0.09\textwidth} | L{0.17\textwidth} | R{0.16\textwidth}}
 \textbf{Name / Accession (source)} & \textbf{Reference} & \textbf{Replicate} & \textbf{Cell-line} & \textbf{Sequencing type} & \textbf{Number of read-pairs or alignments} \\
@@ -1820,7 +2001,15 @@ ENCSR000AED (ENCODE) & \cite{encode2012integrated,davis2017encycolopedia} & 1 & 
 \midrule
 ENCSR706ANY (ENCODE) & \cite{encode2012integrated,davis2017encycolopedia} & 1-4 & NA12878 & PacBio Iso-Seq & 2,687,717 alignments \\
 \midrule
-CHM13 (T2T) & $\dag$ & 1 & CHM13 & Paired-end Illumina NovaSeq & 90,930,105  read-pairs
+CHM13 (T2T) & $\dag$ & 1 & CHM13 & Paired-end Illumina NovaSeq & 90,930,105  read-pairs \\ 
+\midrule
+ERR188217 \& ERR204848 (Geuvadis) & \cite{lappalainen2013transcriptome} & 1 & NA11832 & Paired-end Illumina HiSeq 2000 & 2,354,918 + 863,919 read-pairs \\
+\midrule
+ERR188235 \& ERR204834 (Geuvadis) & \cite{lappalainen2013transcriptome} & 1 & NA11930 & Paired-end Illumina HiSeq 2000 & 1,305,660 + 1,220,864 read-pairs \\
+\midrule
+ERR188354 \& ERR204977 (Geuvadis) & \cite{lappalainen2013transcriptome} & 1 & NA12775 & Paired-end Illumina HiSeq 2000 & 3,088,867 + 806,975 read-pairs \\
+\midrule
+ERR188429 \& ERR204822 (Geuvadis) & \cite{lappalainen2013transcriptome} & 1 & NA12889 & Paired-end Illumina HiSeq 2000 & 2,286,090 + 778,671 read-pairs
 \end{tabular}
 %}
 \caption{\textbf{Read sets and alignments}\\
@@ -1830,6 +2019,7 @@ $\dag$Downloaded from the T2T consortium data repository:\\ \protect\url{https:/
 \end{table}
 
 \begin{table}[H]
+\ssp
 \footnotesize
 \begin{tabular}{L{0.12\textwidth}| L{0.14\textwidth} | L{0.13\textwidth} | L{0.12\textwidth} | L{0.15\textwidth} | R{0.11\textwidth}}
 \textbf{Name} & \textbf{Training reads}$\dag$ & \textbf{Haplotype-specific transcripts}$\ddag$ & \textbf{Expression values} & \textbf{vg sim parameters} & \textbf{Number of read-pairs} \\
@@ -1850,6 +2040,7 @@ $\ddag$See Supplementary Table \ref{tab:pantranscriptomes} for more details on t
 \end{table}
 
 \begin{table}[H]
+\ssp
 \footnotesize
 \begin{tabular}{L{0.2\textwidth}| L{0.4\textwidth} | R{0.18\textwidth}}
 \textbf{Software tool(s) or library} & \textbf{Used for step involved in} & \textbf{Version or GitHub commit(s)}$\dag$ \\
@@ -1921,6 +2112,7 @@ The three stages of the reachability algorithm achieve linear run time in the ty
 The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified version of the multiple traceback algorithm in which only the two highest-scoring alignments are returned. The logic extends naturally to finding the top $k$ alignments, but the details are somewhat complicated and not particularly enlightening. The pseudocode also presents the multiple-traceback algorithm for a Needleman-Wunsch alignment for the sake of simplicity, but the generalization to POA is straightforward. The insight underlying this algorithm is that the second highest-scoring traceback diverges from the highest-scoring one at the cell where the difference is minimized between the score that is entered in the dynamic programming matrix and the other scores that could have been entered there. Moreover, the score of this alignment differs from the highest-scoring alignment’s score by exactly that difference.
 
 \begin{algorithm}[H]
+\ssp
 \DontPrintSemicolon
 \SetAlgoLined
 \SetArgSty{}
@@ -1955,6 +2147,7 @@ The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified v
 \end{algorithm}
 
 \begin{algorithm}[H]
+\ssp
 \DontPrintSemicolon
 \SetAlgoLined
 \SetArgSty{}
@@ -1984,6 +2177,7 @@ The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified v
 \end{algorithm}
 
 \begin{algorithm}[H]
+\ssp
 \DontPrintSemicolon
 \SetAlgoLined
 \SetArgSty{}
@@ -2026,6 +2220,7 @@ The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified v
 \end{algorithm}
 
 \begin{algorithm}[H]
+\ssp
 \DontPrintSemicolon
 \SetAlgoLined
 \SetArgSty{}
@@ -2052,6 +2247,7 @@ The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified v
 \end{algorithm}
 
 \begin{algorithm}[H]
+\ssp
 \DontPrintSemicolon
 \SetAlgoLined
 \SetArgSty{}
@@ -2090,6 +2286,7 @@ The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified v
 \end{algorithm}
 
 \begin{algorithm}[H]
+\ssp
 \DontPrintSemicolon
 \SetAlgoLined
 \SetArgSty{}
@@ -2134,6 +2331,7 @@ The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified v
 \end{algorithm}
 	
 \begin{algorithm}[H]
+\ssp
 \DontPrintSemicolon
 \SetAlgoLined
 \SetArgSty{}
@@ -2174,6 +2372,7 @@ The pseudocode in Algorithm \ref{alg:multiple-traceback} presents a simplified v
 \end{algorithm}
 
 \begin{algorithm}[H]
+\ssp
 \DontPrintSemicolon
 \SetAlgoLined
 \SetArgSty{}
