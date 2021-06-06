@@ -56,9 +56,6 @@
 \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
-\renewcommand{\figurename}{Supplementary Figure}
-\renewcommand{\tablename}{Supplementary Table}
-
 \newcommand{\tool}[1]{\emph{\textsc{#1}}}
 \newcommand{\figref}[1]{Fig. \ref{fig:#1}}
 \newcommand{\vocab}{\textbf}
@@ -109,7 +106,7 @@
 \begin{center}
 To my parents,\\%\vspace{12pt}
 Douglas and Lori Eizenga,\\%\vspace{12pt}
-whose support is bottomless, \\\vspace{48pt}
+who I can always count on, \\\vspace{48pt}
 and to my dear friend, \\%\vspace{12pt}
 Corrie Janssens,\\%\vspace{12pt}
 my moral North Star
@@ -119,6 +116,8 @@ my moral North Star
 
 
 \begin{acknowledgements}
+
+% TODO
 %People to thank:
 %- Benedict
 %- Lab mates
@@ -127,6 +126,7 @@ my moral North Star
 %- COLA and SRU
 %- funding?
 %- should have at least one on here that's not serious
+%- undergrads and students
 \end{acknowledgements}
 
 \end{frontmatter}
@@ -156,17 +156,79 @@ my moral North Star
 
 \part{Introduction and background}
 
-Coming soon$\ldots$
+\chapter{Introduction}
 
-%In modern genomics, sequence analysis is arguably the most fundamental experimental assay. This is in no small part due to its adaptability 
+%Modern biologists can ask and answer a qualitatively greater set of questions at a quantitatively greater scale than their predecessors. Undergirding this expansion in capabilities is a deepened arsenal of technologies, and DNA sequencing is undoubtedly one of the most fundamental among them. The centrality of sequencing is due in part to the fundamental importance of DNA in biology; DNA is the (nearly) universal medium of heredity and the primary object of evolutionary change. In addition, DNA sequencing has proven to be highly adaptable for assaying various biological processes---many unbiased assays consist mainly in a method to imprint the effects of a process on DNA molecules, which is then followed by sequencing. %
 
-% find some breathless editorials about genomics
-%The breathless tone of these popular accounts chafes the professional scientist's aesthetic of measured and dispassionate interpretation of data. The sentiment, however, rings true. 
+Modern biologists can ask and answer a qualitatively greater set of questions at a quantitatively greater scale than their predecessors. Much of this expansion is reflected in the growing use of so-called \emph{omics} methods. This term cheekily refers to a variety of methods that attempt to characterize the entirety of some biomolecular entity in a sample: all DNA in genomics, all proteins in proteomics, all metabolites in metabolomics, etc. Earlier methods in molecular biology that focused on individual entities (e.g. one gene) sometimes suffered a myopia that could seriously slant the scientific understanding of a biological process. The widened lens of omics methods alleviates this risk, and thus they are often referred to as \emph{unbiased} methods (although it may be more accurate to call them less-biased methods---more on this soon).
 
-%Modern biologists can ask and answer a qualitatively greater set of questions at a quantitatively greater scale than their predecessors. Undergirding this expansion in capabilities is a deepened arsenal of technologies, and DNA sequencing is undoubtedly one of the most fundamental among them. The centrality of sequencing is due in part to the fundamental importance of DNA in biology; DNA is the (nearly) universal medium of heredity and the primary object of evolutionary change. In addition, DNA sequencing has proven to be highly adaptable for assaying various biological processes---many unbiased assays consist mainly in a method to imprint the effects of a process on DNA molecules, which is then followed by sequencing. 
-% 
-%% another intro: schrodinger
-%
+Undergirding the growth of omics methods is a deepened arsenal of technologies, and DNA sequencing is undoubtedly one of the most fundamental among them. The centrality of sequencing is due in part to the fundamental importance of DNA in biology; DNA is the (nearly) universal medium of heredity and the primary object of evolutionary change. In addition, DNA sequencing has proven to be highly adaptable for assaying various biological processes. Many unbiased assays consist mainly in a method to imprint the effects of some process onto DNA molecules, which is then followed by sequencing. 
+
+The vast majority of sequencing experiments involve \emph{resequencing}: generating sequencing data from an organism whose genome has been previously sequenced and assembled. For humans and model species, the assembled genomes are maintained as high-quality public data resources, referred to as \emph{reference genomes}. In practice, this turns out to be crucial for two interrelated reasons. First, the reference serves as a technical tool to identify the genomic element corresponding to raw sequencing data. Second, the reference coordinate system acts as a proxy for homology between genomes. Together, these features allow sequencing experiments to be interpreted and generalized beyond the individual sample so that they can contribute to scientific understanding of biology.
+
+Reference-based analysis is an expedient and well-developed methodology, but it does have downsides. For one, there is a fundamental limitation in using a single reference genome for an entire species. At best, a reference assembly can accurately represent the genomic sequence of a single individual. Every other individual will have genetic differences so that their genome mismatches the reference in many locations. This introduces some ambiguity into the reference's role as a coordinate system. More subtly, it also diminishes the reference's ability to serve as a technical tool. The way that sequencing data is identified with a genomic element in the reference is by looking for sequences in the reference that match the data. If in fact the reference mismatches the genome that generated the data, it is more difficult to identify the correct element, and the accuracy of this process decreases. This problem is known as \emph{reference bias}: the systematic tendency for analyses to reduce in accuracy when a sample genome sequence differs from the reference. 
+
+Recently, \emph{pangenomics} has emerged as a powerful methodology to mitigate these shortcomings. The core idea is to replace reference genomes with more general reference structures that incorporate genomic variation across individuals. Including alternate alleles in the reference structure eliminates the privileged role of the reference allele, which is what let to reference bias. Various approaches for doing so have been proposed, the majority of which have been based on \emph{sequence graphs}. These graphs allow sequences to split and rejoin around sites of variation. A full genome sequence can then be formed by concatenating sequences along a walk through a graph. In this way, the graph encodes a space of sequences rather than a single genome sequence.
+
+My thesis research has centered on developing methods for graph-based pangenomic analysis. Taken as a whole, the pangenomics project is rather ambitious. Reference genomes occupy a central role in genomics. Changing this core underlying formalism requires virtually every aspect of genomics analysis to be reconsidered, redesigned, and reimplemented. For this reason, it has been very satisfying to see field of pangenomics evolve over the course of my graduate education from a largely theoretical exercise to a mainstream methodology with growing practical significance, and I am humbled and proud to have played a part in this evolution.
+
+%TODO: revisit if i still like this description of the discussion after i write it
+This dissertation summarizes what I consider to be my most significant contributions to pangenomics. Most of the chapters correspond to published works for which I share authorship. All of the chapters are intended to be standalone documents, and as such they can be read independently from each other. Chapter \ref{chapter:background} provides a general overview of the field of pangenomics as well as some related fields. Chapter \ref{chapter:mpmap} describes methods I developed to apply pangenomic methods to transcriptomics. Chapters \ref{chapter:surject}, \ref{chapter:handle}, and \ref{chapter:autoindex} describe contributions I made to the ecosystem of pangenomics software. Chapters \ref{chapter:snarls} and \ref{chapter:bluntifier} describe some of my research on applying graph theory to problems in pangenomics. Finally, Chapter \ref{chapter:discussion} concludes with a discussion of the current state of pangenomics and its future outlook.
+
+\chapter{Background}
+
+\label{chapter:background}
+
+% TODO: tone feels a bit self-satisfied/pedantic...
+Pangenomics practitioners are exceptional borrowers. The field has thrived off of repurposing and recombining results from a wide range of adjacent fields. As a result, a background chapter on pangenomics must necessarily read like a primer on several distinct disciplines. In order to restrain the cacophony, I restrict my attention in this chapter to human genomics. This comports with my thesis research, which has similarly focused on humans. 
+
+Fittingly, parts of this chapter are also borrowed. The borrowed content comes from two review papers that I co-authored. The first, ``Genome graphs and the evolution of genome inference'', appeared in \emph{Genome Research}. I was one of the primary co-authors along with Adam M. Novak and Benedict Paten\cite{paten2017genome}. The second, ``Pangenome graphs'', appeared in \emph{Annual Review of Genomics and Human Genetics}. I co-authored this review primarily with Erik Garrison, along with smaller contributions from many co-authors\cite{eizenga2020pangenome}.
+%Given that necessity, I will attempt to accomplish the task while giving readers as little whiplash as I can.
+
+\section{Sequencing technology}
+
+\section{The human reference genome}
+
+The sequencing of a human genome was truly a landmark achievement \cite{lander2001initial}. Over a number of years the genome assembly has steadily improved \cite{international2004finishing,church2011modernizing}, to the point that the current Genome Reference Consortium (GRC) human genome assembly, GRCh38 \cite{schneider2016evaluation}, is arguably the best assembled mammalian genome in existence, with just 875 remaining assembly gaps and fewer than 160 million unspecified `N' nucleotides (as of GRCh38.p8). 
+
+%% Utility as proxy to universal coordinate system - for annotations (gencode), for functional experiments (cell lines, encode), for representing variants (1000 genomes)
+%% What fraction of a typical human does it represent? Numbers of SNPs, point variants, SVs per individual 
+
+%From a bioinformatics perspective, perhaps the greatest contribution of the human reference genome has been to act as a proxy to a universal coordinate system for human genetic information. Gene annotations \citep{Harrow:2012cx}, genetic variants \citep{2015Natur.526...68T}, and transcriptional, epigenetic and other functional data types \citep{ENCODEProjectConsortium:2011iz} are all reported with respect to it; it is hard therefore to overstate its importance as a piece of technoscientific infrastructure.
+%\todo[inline]{After reading the comments, I think it's strange to give annotation such a prominent position in the introduction since we don't really follow up on it in the body. Maybe better to minimize this a bit and spend the text real estate bringing up genome inference instead?}
+
+Perhaps one reason the reference genome has been so effective as an organizing system is that the average human is remarkably similar to it. From short-read based assays, it is estimated that the average diploid human has between 4.1 and 5 million point mutations, either single nucleotide variants (SNVs), multi-nucleotide variants (MNVs), or short indels, which is only around 1 point variant every 1450 to 1200 bases of haploid sequence \cite{10002015global}. Such an average human would also have about 20 million bases---about 0.3\% of the genome---affected by around 2,100-2,500 larger structural variants \cite{10002015global}. It should be noted that both these estimates are likely somewhat conservative as some regions of the genome are not accurately surveyed by the short read technology used. Indeed, long read sequencing demonstrates an excess of structural variation not found by earlier short read technology \cite{chaisson2015resolving,seo2016novo}.
+
+\section{Genome inference}
+
+\subsection{Genome assembly}
+
+\subsection{Variant calling}
+
+\section{Human population genomics projects}
+
+\section{Pangenome graphs}
+
+\subsection{Alignment to sequence graphs}
+
+\subsection{}
+
+
+%graph theory, sequence analysis, population genomics
+
+%reference genome
+%1000 genomes
+%genome inference
+%assembly
+%variant calling
+%mapping
+%sequence graphs
+%alignment
+%vg project
+%transcriptomics
+%expression inference
+
+% give this a header for "sequencing technologies" and expand it
 %%TODO: this is too detailed for so early in the introduction, but i'll fix that later
 %%sequencing different technologies
 %Perhaps unsurprisingly then, many advancements in biology methodologies stem directly from advancements in sequencing technology. The problem of sequencing DNA was first solved by Frederick Sanger in 1977 by using low-frequency incorporations of a modified, chain-terminating nucleotide into synthesizing DNA molecules. The resulting shortened products could be separated and distinguished using electrophoresis or chromatography. Though the ``Sanger method'' served as the workhorse for early genome-sequencing projects, it has now been largely supplanted by so-called \emph{next-generation sequencing} (NGS). The term NGS initially encompassed several similar technologies, but today the market is dominated by Illumina's platform. This platform's chemistry generates clusters of identical copies of a DNA molecule using a variant of polymerase chain reaction (PCR). The clusters are then observed during a final round of synthesis in which the DNA molecules are reversibly terminated with a fluorophore-labeled nucleotide, one base at a time. This allows each subsequent nucleotide to be detected optically by its fluorescence. In addition, this process is massively parallel, yielding millions of short sequencing reads from a single sample. Finally, two newer \emph{third-generation sequencing} technologies, one from Pacific Biosciences (PacBio) and one from Oxford Nanopore Technologies (ONT), achieve both high throughput and long read length by sensing individual molecules rather than PCR products. The cost of the longer read length is much higher error rates. Accordingly, NGS and third generation technologies currently coexist on the sequence landscape, each with their own niche of applications.
@@ -181,7 +243,7 @@ Coming soon$\ldots$
 %variant calling
 
 
-
+%methods are a conversation between biologists' needs, technology development, and analysis
 
 %
 %RNA-seq
@@ -216,7 +278,7 @@ Coming soon$\ldots$
 
 \section{Preamble}
 
-What follows is the majority of the text of my preprint, "Haplotype-aware pantranscriptome analyses using spliced pangenome graphs", for which I share first-authorship with Jonas Sibbesen. The paper details three components of a pantranscriptomic pipeline. The first component builds spliced pangenome graphs, the second component aligns RNA-seq data to these graphs, and the final component infer haplotype-specific isoform analysis from the mapping results. My primary contributions were to design and implement the mapping algorithm. In addition, I implemented the read simulation model and contributed extensively to the writing and editing of the paper along with Jonas Sibbesen. The software development featured minor contributions from our co-authors Adam M. Novak, Jouni Sir\'{e}n, and Erik Garrison.
+What follows is the majority of the text of my preprint, "Haplotype-aware pantranscriptome analyses using spliced pangenome graphs", for which I share first-authorship with Jonas Sibbesen\cite{sibbesen2021haplotype}. The paper details three components of a pantranscriptomic pipeline. The first component builds spliced pangenome graphs, the second component aligns RNA-seq data to these graphs, and the final component infer haplotype-specific isoform analysis from the mapping results. My primary contributions were to design and implement the mapping algorithm. In addition, I performed the genomic imprinting experiments, implemented the read simulation model, and contributed extensively to the writing and editing. The software development featured minor contributions from our co-authors Adam M. Novak, Xian Chang, Jouni Sir\'{e}n, and Erik Garrison.
 
 \section{Introduction}
 
@@ -781,7 +843,7 @@ While the graph-based alignments enable some novel downstream applications\cite{
 
 \section{Design and implementation of \tool{vg surject}}
 
-Converting a graph-based alignment into a linear alignment is a trivial and lossless operation. In VG, the path of the linear reference sequence is maintained as a labelled walk within a pangenome graph, so all that is required is to look up the walk through the graph taken by the aligned subsequence of the linear reference. The reverse transformation is more challenging. If any part of a read's alignment lies off of the labeled walk of the reference sequence, there is no lossless conversion. The \tool{vg surject} algorithm is designed with the principle that, despite the inevitable loss, as much of the graph-based alignment should be preserved as possible. The algorithm attempts to realign only the off-reference portions of the alignment onto the reference path so that the end result is nearly-identical alignment that can be losslessly converted into a linear alignment.
+Converting a linear alignment into a graph-based alignment is a trivial and lossless operation. In VG, the path of the linear reference sequence is maintained as a labeled walk within the pangenome graph, so all that is required is to look up the walk through the graph taken by the aligned subsequence of the linear reference. The reverse transformation is more challenging. If any part of a read's alignment lies off of the labeled walk of the reference sequence, there is no lossless conversion. The \tool{vg surject} algorithm is designed with the principle that, despite the inevitable loss, as much of the graph-based alignment should be preserved as possible. The algorithm attempts to realign only the off-reference portions of the alignment onto the reference path so that the end result is nearly-identical alignment that can be losslessly converted into a linear alignment.
 
 \subsection{Connection to the multipath alignment problem}
 
@@ -823,10 +885,11 @@ b_i = \begin{cases}
 With both of these dynamic programming problems completed, the number of walks that use a given edge $(i,j)$ is equal to $f_i \cdot b_j$. To verify condition \ref{item:constriction} above, it is sufficient to compare this number to the total number of walks computed after the forward pass.
 
 \chapter{Memory-efficient dynamic sequence graphs}
+\label{chapter:handle}
 
 \section{Preamble}
 
-This chapter consists of the entirety of the paper ``Efficient dynamic variation graphs'', which was published in \emph{Bioinformatics}. I share primary authorship on this paper with Adam M. Novak, and the paper was also a close collaboration with the last author, Erik Garrison. This paper describes and compares several implementations of sequence graphs. I am responsible for implementing HashGraph, PackedGraph, and part of XG. Erik Garrison is responsible for implementing ODGI and part of XG. Adam M. Novak helped design the data model and implement the Python bindings (with help from Cecilia Cisar). Erik Garrison and I wrote the majority of the paper.
+This chapter consists of the entirety of the paper ``Efficient dynamic variation graphs'', which was published in \emph{Bioinformatics}\cite{eizenga2020efficient}. I share primary authorship on this paper with Adam M. Novak, and the paper was also a close collaboration with the last author, Erik Garrison. This paper describes and compares several implementations of sequence graphs. I am responsible for implementing HashGraph, PackedGraph, and part of XG. Erik Garrison is responsible for implementing ODGI and part of XG. Adam M. Novak helped design the data model and implement the Python bindings (with help from Cecilia Cisar). Erik Garrison and I wrote the majority of the paper.
 
 \section{Introduction}
 
@@ -1259,7 +1322,8 @@ It is natural to consider a pangenome reference system, based on the whole genom
 Recent results demonstrate that many basic bioinformatic problems can be generalized to operate on such structures.
 Should these pangenome representations become common or standard, then variation graph data structures like those we have presented here will form the basis for a wide range of pangenomic methods.
 
-\chapter{Automated index coordination within VG}
+\chapter{Automated index coordination within the VG toolkit}
+\label{chapter:autoindex}
 
 \section{Introduction}
 
@@ -1312,10 +1376,11 @@ Autoindex's primary strategy for multithreading is to chunk input data according
 \part{Graph theoretic contributions}
 
 \chapter{Identifying hierarchical sites of variation in a pangenome graph}
+\label{chapter:snarls}
 
 \section{Preamble}
 
-This chapter consists of the majority of the paper ``Superbubbles, Ultrabubbles and Cacti'', which was presented at the 2017 meeting of RECOMB and subsequently published in \emph{Journal of Computational Biology}. I was not a primary author on this publication. However, I contributed in whole the sections titled \emph{Compatible Snarl Families} and \emph{Ultrabubbles and Cacti}, including both the mathematical proofs and the actual writing. This chapter includes most of the rest of the main text, as it provides motivation for the problem and introduces mathematical notation that is used in my section. These portions were primarily written by Benedict Paten. I have omitted the results section, which is not necessary to understand my contributions. I have also omitted proofs in the appendices for all theorems that I did not prove myself. 
+This chapter consists of the majority of the paper ``Superbubbles, Ultrabubbles and Cacti'', which was presented at the 2017 meeting of RECOMB and subsequently published in \emph{Journal of Computational Biology}\cite{paten2018superbubbles}. I was not a primary author on this publication. However, I contributed in whole the sections titled \emph{Compatible Snarl Families} and \emph{Ultrabubbles and Cacti}, including both the mathematical proofs and the actual writing. This chapter includes most of the rest of the main text, as it provides motivation for the problem and introduces mathematical notation that is used in my section. These portions were primarily written by Benedict Paten. I have omitted the results section, which is not necessary to understand my contributions. I have also omitted proofs in the appendices for all theorems that I did not prove myself. 
 
  \section{Introduction}
 
@@ -1583,6 +1648,7 @@ This work was supported by the National Human Genome Research Institute of the N
 Award Number 5U54HG007990 and grants from the W.M. Keck foundation and the Simons Foundation. This work benefitted from numerous conversations with David Haussler and Daniel Zerbino.
 
 \chapter{Walk-preserving transformation of overlapped sequence graphs into blunt sequence graphs}
+\label{chapter:bluntifier}
 
 \section{Preamble}
 
@@ -1821,8 +1887,13 @@ It could also facilitate direct analyses of assembly graphs in metagenomics appl
 
 \part{Discussion}
 
+\chapter{Discussion}
+\label{chapter:discussion}
+
 %TODO:
-Coming soon$\ldots$
+
+\renewcommand{\figurename}{Supplementary Figure}
+\renewcommand{\tablename}{Supplementary Table}
 
 \appendix
 
