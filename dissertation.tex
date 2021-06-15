@@ -79,7 +79,7 @@
 \committeemembertwo{Professor R. Edward Green}
 %\committeememberthree{Professor Ipsum Lorem}
 \numberofmembers{3} %% (including chair) possible: 3, 4, 5, 6
-\deanlineone{Dean Quentin Williams}
+\deanlineone{Dean Peter F. Biehl}
 \deanlinetwo{Vice Provost and Dean of Graduate Studies}
 \deanlinethree{}
 \field{Bioinformatics}
@@ -116,6 +116,7 @@ my moral North Star
 
 
 \begin{acknowledgements}
+
 
 % TODO
 %People to thank:
@@ -175,7 +176,7 @@ Recently, \emph{pangenomics} has emerged as a powerful methodology to mitigate t
 \begin{figure}[h]
 \begin{center}
 \includegraphics[width=.75\textwidth]{introfigures/pangenome_graph.png}
-\caption{\textbf{An example of a sequence graph.} Colored bars indicate the walk taken by several haplotypes through the graph. The sequence of each can be haplotype can be reconstructed by concatenating the labels of the DNA sequences along the walk. Figure adapted from \cite{Garrison_2019}.
+\caption{\textbf{An example of a sequence graph.} Colored bars indicate the walk taken by several haplotypes through the graph. The sequence of each haplotype can be reconstructed by concatenating the labels of the DNA sequences along the walk. Figure adapted from \cite{Garrison_2019}.
 } \label{fig:graph_example}
 \end{center}
 \end{figure}
@@ -203,7 +204,7 @@ Finally, two newer \emph{third-generation sequencing} technologies achieve both 
  
 \section{The human reference genome}
 
-The sequencing of a human genome was a landmark achievement. Over the span of decades, it was painstakingly sequenced using a combination of bacterial artificial chromosomes (BACs) and capillary Sanger sequencing\cite{lander2001initial}. In the following years, the genome assembly has steadily improved \cite{international2004finishing,church2011modernizing} to the point that the Genome Reference Consortium (GRC) human genome assembly, GRCh38 \cite{schneider2016evaluation}, was arguably the best assembled mammalian genome in existence at the time of its release, with just 875 remaining assembly gaps and fewer than 160 million unspecified `N' nucleotides (as of GRCh38.p8). In the near future, it is likely that this will be replaced by a reference that is essentially fully complete. The T2T Consortium recently announced a gapless telomore-to-telomere human genome assembly using a haploid human cell line\cite{nurk2021complete}. 
+The sequencing of a human genome was a landmark achievement. Over the span of decades, it was painstakingly sequenced using a combination of bacterial artificial chromosomes (BACs) and capillary Sanger sequencing\cite{lander2001initial}. In the following years, the genome assembly has steadily improved \cite{international2004finishing,church2011modernizing} to the point that the Genome Reference Consortium (GRC) human genome assembly, GRCh38 \cite{schneider2017evaluation}, was arguably the best assembled mammalian genome in existence at the time of its release, with just 875 remaining assembly gaps and fewer than 160 million unspecified `N' nucleotides (as of GRCh38.p8). In the near future, it is likely that this will be replaced by a reference that is essentially fully complete. The T2T Consortium recently announced a gapless telomore-to-telomere human genome assembly using a haploid human cell line\cite{nurk2021complete}. 
 
 %% Utility as proxy to universal coordinate system - for annotations (gencode), for functional experiments (cell lines, encode), for representing variants (1000 genomes)
 %% What fraction of a typical human does it represent? Numbers of SNPs, point variants, SVs per individual 
@@ -1289,7 +1290,7 @@ For path enumeration, the highest-performing methods are \textsc{XG} and \textsc
 Variation graphs built from the 1000 Genomes Project (1000GP) variant catalog and the human reference genome have fairly homogenous and regular features.
 In addition, they have connected components of very different sizes, each corresponding to a chromosome.
 This provides a natural, fairly controlled means to explore the scaling behavior of our data structures.
-Moreover, graphs of this form are seeing increasing use in variant-aware resequencing analyses \cite{crysnanto2019sequence}.
+Moreover, graphs of this form are seeing increasing use in variant-aware resequencing analyses \cite{crysnanto2020bovine}.
 Thus, the performance of data structures on these graphs is of general interest.
 
 \begin{figure}[p]
@@ -1925,16 +1926,58 @@ It could also facilitate direct analyses of assembly graphs in metagenomics appl
 \chapter{Discussion}
 \label{chapter:discussion}
 
+%In this dissertation, I have described some of my contributions to graph-based methods in pangenomics. Some of these 
+
+For many years, progress in pangenomics was hampered by ascertainment bias in genomic variation assays. In order to comprehensively identify minor alleles, sequencing projects needed to be carried out at population scale. The only genome inference technologies that were economical at this scale were genotype arrays and NGS variant calling. Accordingly, scientific knowledge of variation shared these assays' biases. The ascertained variants were disproportionately small and disproportionately located in high-complexity, unique regions of the genome. Almost by definition, these are the variants that were least likely to have been substantially impacted by reference bias to begin with.
+
+This situation is now beginning to change. Advancements in long read assembly methods are shining a light on previously hidden regions of the genome. This can be seen in the first complete human genome assembly by the T2T Consortium\cite{nurk2021complete} or in the intensive characterization of structural variation by the Human Genome Structural Variation Consortium (HGSVC)\cite{chaisson2019multi,ebert2021haplotype}. The Human Pangenome Reference Consortium (HPRC) is currently engaged in a similar assembly effort\cite{genomeweb2021hprc}. These data resources are already being used in pangenomics applications to genotype structural variation with NGS data\cite{ebler2020pangenome,siren2020genotyping}, a poster child for genomics tasks that were previously frustrated by severe reference bias.
+
+The research presented in this dissertation sits somewhere on the threshold between these two periods of pangenomics. In chapter \ref{chapter:snarls}, I helped establish foundational theory for pangenome graphs. Chapters \ref{chapter:handle} and \ref{chapter:autoindex} detail engineering efforts that underlie the recent emergence of practical and usable pangenomics. In chapter \ref{chapter:surject}, I developed a backward linkage from graph-based pangenomics to conventional reference analyses. Finally, in chapters \ref{chapter:mpmap} and \ref{chapter:bluntifier}, I contributed toward extending the concepts and methods developed in pangenomics to other areas of genomics: transcriptomics and genome assembly respectively.
+
+The new genome assembly data resources from the HGSVC and HPRC are likely to open new challenges for pangenomics method developers. Up until now, most pangenome graphs have been constructed by augmenting a reference genome with variant alleles\cite{garrison2018variation,kim2019graph}. As the field pivots toward genome assemblies, it will increasingly be necessary to construct graphs using whole genome multiple sequence alignments\cite{armstrong2020progressive,minkin2020scalable,li2020design}. In fact, the HPRC is also working to produce graphs with this methodology. Such graphs have comparatively complicated structures, with cyclic motifs and regions of high structural complexity. The assumption of structural simplicity is subtly baked into the design of many existing pangenomics applications, and it is likely than many tools' performance will decline on these new graphs---if they work at all. However, these challenges also represent opportunities. Much of the complexity in assembly-based graphs is due to true complexity in the organization of genomic variation, and the formalism must be rich enough to express this variation in order to analyze it.
+
+The linkages between pangenomics and population genomics remain tight. This is evident in the discussion of pangenomics data resources above, which could just as easily have been a discussion of population genomics data resources. The challenges and opportunities are similarly mirrored. Population genomics remains, on the whole, invested in a variant-centered analysis framework, but the concepts and tools being developed in pangenomics offer a tantalizing suggestion of a more general approach. A pangenome graph can be thought of as a map of homologies between a collection of haplotypes. In this sense, it implicitly defines an approximation to the ancestral recombination graph (ARG) with a similar flavor to the Li and Stevens model\cite{li2003modeling}: the relationships between haplotypes are explicit but without any overlaid ancestry-based tree structure. However, in another sense the pangenome graph represents a \emph{more} exact formalism to express the ARG than the sequence-of-trees that is commonly used for variant data\cite{rasmussen2014genome,kelleher2019inferring}. This is because the sequence-of-trees inherits all of the simplifications and biases of the reference-based variant calling methodology. The richer structure of homologies in a pangenome graph hints at the possibility of advancing closer to the theoretical ARG holy grail: an ancestral history of every base in a recombining, (structurally) mutating genome. Doing so will probably require introducing ancestry-based tree structures to the graph's haplotypes.
+
+I will suggest that the most productive route forward in pursuing the synergies between population genomics and pangenomics is to be guided by applications. Two recently published pangenomics tools strike me as exemplifying this approach. The danbing-tk tool used lossy, compressive pangenome graph structures to characterize variable nucleotide tandem repeats (VNTRs)\cite{lu2021profiling}. These loci have high enough polymorphism that more exact graphs would be difficult to build in practice, and the lossy graphs could still support dosage models of the genotypes that exhibited population structure and phenotypic associations. Another tool, PanGenie, boosts its structural variant calling accuracy by imputing genotypes with a model that essentially makes explicit the pangenome graph's implicit Li and Stevens model mentioned above\cite{ebler2020pangenome}. Both of these studies display a pragmatic balance between computational difficulty, complexity of the pangenome formalism, and the population genomics analyses they want to support. However, I hope that pragmatism will not forestall attempts to analyze features of the ARG that necessitate the richer conceptual framework offered by pangenomics.
+
+Moving forward, I predict that there will be a trend of applying pangenomics methodologies to increasingly many areas in functional genomics as well. My work on haplotype-resolved transcriptomics in Chapter \ref{chapter:mpmap} is a step forward in this direction. It offers an example of how both the technical formalisms of pangenomics and the mitigation of reference bias can be applied to a functional assay. Work has also been done on histone modifications\cite{groza2020personalized} and transcription factor binding\cite{grytten2019graph} by other groups. Plenty of areas remain: 3D genome organization, DNA accessibility, perturbation screens, DNA and RNA modifications, somatic mutations, etc. It remains to be seen which of these areas will stand to benefit the most from pangenomics approaches. In exploring applications in these domains, I believe there is a danger of becoming overly focused on sequence graph methods as such. For instance, it is not at all clear to me that sequence graphs are a useful formalism for a 3D organization pangenome. As methods developers we should be guided by the problem rather than the familiarity of current approaches. Ultimately, broad adoption in a field will depend both on how troublesome reference bias is and on the usefulness of novel conceptualizations of population genomics.
+
+Another area of pangenomics that I expect to be very active in the future is annotation. Genome annotation is a vital function for conventional reference genomes, but relatively little work has been done on pangenome annotation. I suggest that it is useful to differentiate between two classes annotations for pangenomes, which I refer to as \emph{pangenome annotations} and \emph{conditional genome annotations}. By pangenome annotations, I mean annotation with data that cannot be simply or unambiguously expressed relative to any particular haplotype. Examples include intraspecific sequence conservation or variant effects, both of which are implicitly annotations of multiple haplotypes. By conditional genome annotations, I mean annotation with data that is most meaningful when expressed relative to one haplotype but nevertheless shows population variation. Because of this variation, conditional annotations may benefit from using pangenomics as an organizing structure. Examples could include gene transcripts and regulatory elements (for which a similar concept has already been applied\cite{tognon2021grafimo}). I expect that the coexistence of these classes of annotation will necessitate informatics and visualization tools that can both express annotations of entire pangenome graphs and perform on-demand queries for annotations conditioned on a specific haplotype. In the latter case, I further expect that the tools of comparative annotation will provide a productive route forward\cite{armstrong2019whole}.
+
+Pangenomics approaches are already being applied outside of human genomics. In fact, they were applied much earlier in microbes\cite{medini2005microbial}, although not with nucleotide resolution until recently\cite{colquhoun2020nucleotide}. Recent studies have also investigated other multicellular eukaryotes with a clear emphasis on agricultural plants: \textit{A. thaliana}\cite{alonso20161}, cabbage\cite{golicz2016pangenome}, rice\cite{sun2017rpan,zhou2020platinum,qin2021pan}, cow\cite{crysnanto2019accurate,crysnanto2020bovine,crysnanto2021novel}, tomato\cite{gao2019tomato}, soybean\cite{liu2020pan}, rapeseed\cite{song2020eight}, wheat\cite{walkowiak2020multiple}, cotton\cite{li2021cotton}, and eggplant\cite{barchi2021improved}. As this march continues, I believe it is a good time to begin thinking about what the points of contact will be between pangenomics and comparative genomics. Indeed, many of the technical tools of comparative genomics (notably whole genome alignment) are already being repurposed for pangenomics\cite{armstrong2020progressive}. I expect that the greatest gains are likely to be found in areas where there is already fruitful cross pollination between comparative genomics and population genomics, such as hybridization and incomplete lineage sorting. In any case, the barriers to such analysis seem greater than for intraspecific analysis, which I expect to be the mainstay of pangenomics for the near future.
+
+I do not share the optimism of some early adopters that pangenome references will supplant conventional reference genomes, which maintain a substantial advantage in efficiency and conceptual simplicity. For many problems in genomics, conventional references, for all their simplifications and inaccuracies, are perhaps not great but at least good enough. However, I do expect reference pangenomes to become an important public data resource. The task of constructing a quality pangenome is challenging, and the genomics community stands to benefit greatly by not having to repeat it. 
+
+It also seems likely that a reference pangenome may never have the air of finality that the genomics community has invested reference genomes with. Any map of homologies is bound to be incomplete and erroneous, which means there will always be uncertainty (and probably contest) over the correct structure for the pangenome. However, it is worth noting that assembling a large eukaryotic genome once seemed similarly insurmountable, and yet the reference genome still attained the venerated role that it now occupies. The elusiveness of that sense of finality for a reference pangenome may be a simple matter of time. Alternatively, it may stem from the fact that the project of pangenomics began by centering the problem of reference bias and thereby, in a sense, admitting its own weaknesses. 
+
+In any case, this is an exciting time for pangenomics. In the last few years, pangenomics methods have become increasingly practical and mainstream. Moreover, I believe strongly that many areas of genomics are ripe for pangenomic analysis, as I hope this discussion has communicated. I am confident that the pangenomics community is capable of moving this program of research forward, or maybe reverse complement.
+
+% better use of graphs as a resource for annotation and information curation
+%    coordinate formalisms? visualization?
+% conditional annotation
+% convergence with evolutionary and comparative genomics
+% increasing scope of organisms (already happening)
+
 %TODO:
-% HPRC, cyclic graphs
+% conditional annotation
+% differentiate between roles for reference:
+%    description of population variation
+%    technical tool for read mapping
+%    informatic object for annotations
 % application to complex regions
 % increasing scope of organisms (already happening)
-% structural variation
 % application to more areas of functional genomics
 %    will the graph formalism be sufficient? what about e.g. pangenome of 3-d conformation
-% a lot of what pangenomics does is bring formal rigor to population genomics
+%    something about the danger of becoming graph-oriented rather than task-oriented
+% a lot of what pangenomics does is bring formal rigor to population genomic consideration of variation (homology map)
 % what kind of population genomics do we support
+%    will it be necessary to go beyond linear models
+%    maybe cite the frequented regions paper? chaisson VNTR paper?
+%    this will need to be a conversation with pop gen, involve new formalisms
+% how will the logic of "variants" generalize to these complex graphs 
 % convergence with evolutionary and comparative genomics
+% better use of graphs as a resource for annotation and information curation
+%    coordinate formalisms? visualization?
 
 \renewcommand{\figurename}{Supplementary Figure}
 \renewcommand{\tablename}{Supplementary Table}
